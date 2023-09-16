@@ -63,5 +63,10 @@ struct FileSystemImpl
     {
         return Filesystem::get_instance()->close_file(path, fi);
     }
+
+    static void destroy(void *data)
+    {
+        Filesystem::get_instance()->destroy(data);
+    }
 };
 

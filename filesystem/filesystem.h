@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ICommand.h"
 #include "connection_pool.h"
 #include <QObject>
 #include <QFuture>
@@ -24,14 +23,13 @@ public:
     Connection_pool* pool;
 
 signals:
-    void request(QString command);
     void error(QString);
 
 private:
     static Filesystem* instance;
     QDir* cache;
     QMap<QString, QString> file_attributes;
-    QMap<QString, QMap<fuse_off_t, size_t>*> written_ofsets;
+    QMap<QString, QMap<fuse_off_t, size_t>*> written_offsets;
 
     void* init(fuse3_conn_info *conn, fuse3_config *conf);
     int get_attr(const char *path, struct fuse_stat *stbuf, struct fuse3_file_info *fi);
@@ -46,8 +44,9 @@ private:
     int write_file(const char *path, const char *buf, size_t size, fuse_off_t off, struct fuse3_file_info *fi);
     int close_file(const char *path, struct fuse3_file_info *fi);
 
+    void destroy(void* data);
+    QString cache_path(const char *path);
     void convert_to_stat(QString doc, struct fuse_stat *stbuf);
-    QFuture<QString> send(ICommand& command);
 
     // QThread interface
 protected:

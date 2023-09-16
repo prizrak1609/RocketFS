@@ -40,7 +40,7 @@ void Filesystem::run()
             nullptr, // int (*releasedir)(const char *path, struct fuse3_file_info *fi);
             nullptr, // int (*fsyncdir)(const char *path, int datasync, struct fuse3_file_info *fi);
             &FileSystemImpl::init, // void* (*init)(fuse3_conn_info *conn, fuse3_config *conf)
-            nullptr, // void (*destroy)(void *data);
+            &FileSystemImpl::destroy, // void (*destroy)(void *data);
             nullptr, // unsupported, int (*access)(const char *path, int mask);
             &FileSystemImpl::create_file, // int (*create)(const char *path, fuse_mode_t mode, struct fuse3_file_info *fi);
             nullptr, // unsupported, int (*lock)(const char *path, struct fuse3_file_info *fi, int cmd, struct fuse_flock *lock);

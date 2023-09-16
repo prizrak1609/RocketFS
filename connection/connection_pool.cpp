@@ -1,5 +1,6 @@
 #include "connection_pool.h"
 #include <QFuture>
+#include <QMutexLocker>
 
 Connection_pool::Connection_pool(QObject *parent, QString url_) : QObject{parent}, url(url_)
 {
@@ -7,13 +8,17 @@ Connection_pool::Connection_pool(QObject *parent, QString url_) : QObject{parent
     count = 1;
     for(int i = 0; i < count; i++)
     {
-        pool.push_back(new Connection(this, url));
+        idle.push_back(new Connection(this, url));
     }
 }
 
 Connection_pool::~Connection_pool()
 {
-    for(Connection* conn : pool)
+    for(Connection* conn : idle)
+    {
+        delete conn;
+    }
+    for(Connection* conn : busy)
     {
         delete conn;
     }
@@ -23,16 +28,58 @@ Connection* Connection_pool::get_connection()
 {
     while(true)
     {
-        QList<Connection*>::Iterator iter = pool.begin();
-        for(; iter != pool.end(); iter++)
+        for(Connection* conn : idle)
         {
-            if ((*iter)->is_idle())
+            if (conn->is_idle())
             {
-                return *iter;
+                return conn;
             }
+            qDebug() << conn << "waiting for result:" << conn->get_last_command();
         }
-        qDebug() << "waiting";
+        qDebug() << this << "waiting";
         QThread::yieldCurrentThread();
         QThread::sleep(1);
     }
+}
+
+QFuture<QString> Connection_pool::send_text(ICommand &command)
+{
+    QMutexLocker<QMutex> lock(&send_mutex);
+
+    Connection* conn = get_connection();
+
+    idle.removeOne(conn);
+    busy.push_back(conn);
+
+    connect(this, &Connection_pool::request, conn, &Connection::send, Qt::SingleShotConnection);
+
+    QFuture<QString> result = QtFuture::connect(conn, &Connection::response_string);
+
+    emit request(command.to_json());
+    return result.then(QtFuture::Launch::Sync, [this, conn](QString message) -> QString {
+        busy.removeOne(conn);
+        idle.push_back(conn);
+        return message;
+    });
+}
+
+QFuture<QByteArray> Connection_pool::send_binary(ICommand &command)
+{
+    QMutexLocker<QMutex> lock(&send_mutex);
+
+    Connection* conn = get_connection();
+
+    idle.removeOne(conn);
+    busy.push_back(conn);
+
+    connect(this, &Connection_pool::request, conn, &Connection::send, Qt::SingleShotConnection);
+
+    QFuture<QByteArray> result = QtFuture::connect(conn, &Connection::response_bytes);
+
+    emit request(command.to_json());
+    return result.then(QtFuture::Launch::Sync, [this, conn](QByteArray message) -> QByteArray {
+        busy.removeOne(conn);
+        idle.push_back(conn);
+        return message;
+    });
 }
