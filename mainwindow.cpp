@@ -27,6 +27,8 @@ void MainWindow::connect()
 
     filesystem->cache_folder = ui->cache_folder->text();
     filesystem->pool = new Connection_pool(this, ui->server_addr->text());
+    filesystem->print_logs = true;
+    filesystem->pool->set_print_logs(false);
     filesystem->mount_path = ui->drive_letter->text();
     filesystem->start();
 

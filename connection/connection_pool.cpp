@@ -5,7 +5,7 @@
 Connection_pool::Connection_pool(QObject *parent, QString url_) : QObject{parent}, url(url_)
 {
     int count  = QThread::idealThreadCount();
-    count = 1;
+//    count = 2;
     for(int i = 0; i < count; i++)
     {
         idle.push_back(new Connection(this, url));
@@ -34,8 +34,10 @@ Connection* Connection_pool::get_connection()
             {
                 return conn;
             }
+            if (print_logs)
             qDebug() << conn << "waiting for result:" << conn->get_last_command();
         }
+        if (print_logs)
         qDebug() << this << "waiting";
         QThread::yieldCurrentThread();
         QThread::sleep(1);
@@ -44,12 +46,15 @@ Connection* Connection_pool::get_connection()
 
 QFuture<QString> Connection_pool::send_text(ICommand &command)
 {
-    QMutexLocker<QMutex> lock(&send_mutex);
+    Connection* conn = nullptr;
+    {
+        QMutexLocker<QMutex> lock(&send_mutex);
 
-    Connection* conn = get_connection();
+        conn = get_connection();
 
-    idle.removeOne(conn);
-    busy.push_back(conn);
+        idle.removeOne(conn);
+        busy.push_back(conn);
+    }
 
     connect(this, &Connection_pool::request, conn, &Connection::send, Qt::SingleShotConnection);
 
@@ -65,12 +70,15 @@ QFuture<QString> Connection_pool::send_text(ICommand &command)
 
 QFuture<QByteArray> Connection_pool::send_binary(ICommand &command)
 {
-    QMutexLocker<QMutex> lock(&send_mutex);
+    Connection* conn = nullptr;
+    {
+        QMutexLocker<QMutex> lock(&send_mutex);
 
-    Connection* conn = get_connection();
+        conn = get_connection();
 
-    idle.removeOne(conn);
-    busy.push_back(conn);
+        idle.removeOne(conn);
+        busy.push_back(conn);
+    }
 
     connect(this, &Connection_pool::request, conn, &Connection::send, Qt::SingleShotConnection);
 
@@ -83,3 +91,17 @@ QFuture<QByteArray> Connection_pool::send_binary(ICommand &command)
         return message;
     });
 }
+
+void Connection_pool::set_print_logs(bool print)
+{
+    print_logs = print;
+    for(Connection* conn : idle)
+    {
+        conn->print_logs = print;
+    }
+    for(Connection* conn : busy)
+    {
+        conn->print_logs = print;
+    }
+}
+

@@ -39,7 +39,7 @@ Filesystem* Filesystem::get_instance()
 
 void* Filesystem::init(fuse3_conn_info *conn, fuse3_config *conf)
 {
-    conn->capable |= FUSE_CAP_CASE_INSENSITIVE | FUSE_READDIR_PLUS;
+    conn->capable |= FUSE_CAP_CASE_INSENSITIVE | FUSE_READDIR_PLUS | FUSE_CAP_ASYNC_DIO | FUSE_CAP_ASYNC_READ;
 
     QJsonObject attributes_obj;
 
@@ -91,12 +91,18 @@ int Filesystem::get_attr(const char *path, fuse_stat *stbuf, fuse_file_info *fi)
 
     GetAttrCmd command(path);
     int result = 0;
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).then(QtFuture::Launch::Sync, [&result, stbuf, this, path](QString message){
             if(message.isEmpty())
             {
+                                    if(print_logs)
+                qDebug() << "receive result none";
                 result = -ENOENT;
                 return;
             }
+            if(print_logs)
+            qDebug() << "receive result" << message;
             file_attributes.insert(path, message);
             convert_to_stat(message, stbuf);
         }).waitForFinished();
@@ -106,11 +112,15 @@ int Filesystem::get_attr(const char *path, fuse_stat *stbuf, fuse_file_info *fi)
 int Filesystem::read_dir(const char *path, void *buf, fuse_fill_dir_t filler, fuse_off_t off, fuse_file_info *fi, fuse_readdir_flags flags)
 {
     ReadDirCmd command(path);
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).then([buf, this, filler, &path](QString message){
             if(message.isEmpty())
             {
                 return;
             }
+            if(print_logs)
+            qDebug() << "receive result" << message;
             QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
             QJsonArray array = doc.array();
             for(QJsonValueRef item : array)
@@ -131,6 +141,7 @@ int Filesystem::read_dir(const char *path, void *buf, fuse_fill_dir_t filler, fu
 
                 if(filler(buf, file_name.toStdString().c_str(), stats, 0, FUSE_FILL_DIR_PLUS) == 1) // buffer is full
                 {
+                    if(print_logs)
                     qDebug() << "buffer is full";
                     emit error("read_dir: buffer is full");
                     break;
@@ -143,7 +154,11 @@ int Filesystem::read_dir(const char *path, void *buf, fuse_fill_dir_t filler, fu
 int Filesystem::mkdir(const char *path, fuse_mode_t mode)
 {
     MkDirCmd command(path);
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).waitForFinished();
+    if(print_logs)
+    qDebug() << "receive result mkdir";
     return 0;
 }
 
@@ -154,7 +169,11 @@ int Filesystem::rmdir(const char *path)
         file_attributes.remove(path);
     }
     RmDirCmd command(path);
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).waitForFinished();
+    if(print_logs)
+    qDebug() << "receive result rmdir";
     return 0;
 }
 
@@ -164,15 +183,30 @@ int Filesystem::rename(const char *oldpath, const char *newpath, unsigned int fl
     file_attributes.remove(oldpath);
     file_attributes.insert(newpath, attr);
 
+    if (opened_files.contains(oldpath))
+    {
+        OpenedFile file = opened_files.value(oldpath);
+        opened_files.remove(oldpath);
+        opened_files.insert(newpath, file);
+    }
+
     RenameCmd command(oldpath, newpath);
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).waitForFinished();
+    if(print_logs)
+    qDebug() << "receive result rename";
     return 0;
 }
 
 int Filesystem::create_file(const char *path, fuse_mode_t mode, fuse_file_info *fi)
 {
     CreateFileCmd command(path);
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).waitForFinished();
+    if(print_logs)
+    qDebug() << "receive result create_file";
     return 0;
 }
 
@@ -182,42 +216,96 @@ int Filesystem::remove_file(const char *path)
     {
         file_attributes.remove(path);
     }
+    if (opened_files.contains(path))
+    {
+        OpenedFile file = opened_files.value(path);
+        opened_files.remove(path);
+        delete file.mutex;
+    }
     RmFileCmd command(path);
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).waitForFinished();
+    if(print_logs)
+    qDebug() << "receive result remove_file";
     return 0;
 }
 
 int Filesystem::open_file(const char *path, fuse_file_info *fi)
 {
+    qDebug() << "open file in thread " << QThread::currentThreadId();
+    if (opened_files.contains(path))
+    {
+        OpenedFile file = opened_files.value(path);
+        file.links++;
+        opened_files[path] = file;
+    } else
+    {
+        OpenedFile file;
+        file.links = 1;
+        opened_files.insert(path, file);
+    }
+
     OpenFileCmd command(path);
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).waitForFinished();
+    if(print_logs)
+    qDebug() << "receive result open_file";
     return 0;
 }
 
 int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t off, fuse_file_info *fi)
 {
-    QString file_path = cache_path(path);
-
-    if(file_path.endsWith("folder.jpg") || file_path.endsWith("desktop.ini"))
+    qDebug() << "read file in thread " << QThread::currentThreadId();
+    QMutex* mutex = nullptr;
+    if (opened_files.contains(path))
     {
-        return -ENOENT;
+        mutex = opened_files.value(path).mutex;
     }
+
+    QMutexLocker<QMutex> lock(mutex);
+
+//    QString file_path = cache_path(path);
+
+//    if(file_path.endsWith("folder.jpg") || file_path.endsWith("desktop.ini"))
+//    {
+//        return -ENOENT;
+//    }
 
     memset(buf, 0, size);
 
-    ReadFileCmd command(path, size, off);
     int read_bytes = 0;
-    pool->send_binary(command).then(QtFuture::Launch::Sync, [buf, size, &read_bytes](QByteArray message){
+
+//    QFile file(file_path);
+//    if (file.exists())
+//    {
+//        file.seek(off);
+//        QByteArray message = file.read(size);
+//        size_t source_size = size;
+//        if (message.size() < size)
+//        {
+//            source_size = message.size();
+//        }
+
+//        read_bytes = source_size;
+
+//        memcpy_s(buf, size, message, source_size);
+//        return 0;
+//    }
+
+    ReadFileCmd command(path, size, off);
+
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
+    pool->send_binary(command).then(QtFuture::Launch::Sync, [buf, size, &read_bytes, this](QByteArray message){
         if(message.isEmpty())
         {
             read_bytes = -ENOENT;
             return;
         }
-
-//        file.open(QFile::WriteOnly);
-//        file.seek(off);
-//        file.write(bytes);
-//        file.close();
+        if(print_logs)
+        qDebug() << "receive result" << message.size();
 
         size_t source_size = size;
         if (message.size() < size)
@@ -234,30 +322,64 @@ int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t o
 
 int Filesystem::write_file(const char *path, const char *buf, size_t size, fuse_off_t off, fuse_file_info *fi)
 {
-    QString file_path = cache_path(path);
-
-    QFile file(file_path);
-
-    if(!file.exists())
+    qDebug() << "write file in thread " << QThread::currentThreadId();
+    QMutex* mutex = nullptr;
+    if (opened_files.contains(path))
     {
-        file.open(QFile::WriteOnly);
-        file.close();
+        mutex = opened_files.value(path).mutex;
     }
 
-    file.open(QFile::WriteOnly);
-    file.seek(off);
-    file.write(buf);
-    file.close();
+    QMutexLocker<QMutex> lock(mutex);
+
+//    QString file_path = cache_path(path);
+
+//    QFile file(file_path);
+//    if(!file.exists())
+//    {
+//        file.open(QFile::WriteOnly);
+//        file.close();
+//    }
+
+//    file.open(QFile::WriteOnly);
+//    file.seek(off);
+//    file.write(buf);
+//    file.close();
 
     WriteFileCmd command(path, QString(buf).toUtf8().toBase64(), size, off);
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).waitForFinished();
+    if(print_logs)
+    qDebug() << "receive result write_file";
     return 0;
 }
 
 int Filesystem::close_file(const char *path, fuse_file_info *fi)
 {
+    qDebug() << "close file in thread " << QThread::currentThreadId();
+    QMutex* mutex = nullptr;
+    if (opened_files.contains(path))
+    {
+        OpenedFile file = opened_files.value(path);
+        file.links--;
+        if(file.links == 0)
+        {
+            opened_files.remove(path);
+        } else
+        {
+            mutex = file.mutex;
+            opened_files[path] = file;
+        }
+    }
+
+    QMutexLocker<QMutex> lock(mutex);
+
     CloseFileCmd command(path);
+    if(print_logs)
+    qDebug() << "send command" << command.to_json();
     pool->send_text(command).waitForFinished();
+    if(print_logs)
+    qDebug() << "receive result close_file";
     return 0;
 }
 

@@ -21,6 +21,7 @@ public:
     QString cache_folder;
     QString mount_path;
     Connection_pool* pool;
+    bool print_logs = true;
 
 signals:
     void error(QString);
@@ -29,7 +30,14 @@ private:
     static Filesystem* instance;
     QDir* cache;
     QMap<QString, QString> file_attributes;
-    QMap<QString, QMap<fuse_off_t, size_t>*> written_offsets;
+
+    struct OpenedFile
+    {
+        QMutex* mutex = new QMutex();
+        int links = 1;
+    };
+
+    QMap<QString, OpenedFile> opened_files;
 
     void* init(fuse3_conn_info *conn, fuse3_config *conf);
     int get_attr(const char *path, struct fuse_stat *stbuf, struct fuse3_file_info *fi);

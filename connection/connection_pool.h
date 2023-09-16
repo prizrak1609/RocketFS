@@ -18,6 +18,7 @@ public:
     Connection* get_connection();
     QFuture<QString> send_text(ICommand& command);
     QFuture<QByteArray> send_binary(ICommand& command);
+    void set_print_logs(bool print);
 
 public slots:
 //    void init();
@@ -26,6 +27,7 @@ signals:
     void request(QString command);
 
 private:
+    bool print_logs;
     QList<Connection*> idle;
     QList<Connection*> busy;
     QString url;

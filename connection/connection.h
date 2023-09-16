@@ -17,6 +17,7 @@ public:
 
     bool is_idle() const;
     QString get_last_command() const;
+    bool print_logs = true;
 
 signals:
     void response_string(QString);
