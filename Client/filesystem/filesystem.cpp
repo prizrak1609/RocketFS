@@ -107,7 +107,6 @@ int Filesystem::get_attr(const char *path, fuse_stat *stbuf, fuse_file_info *fi)
 
     GetAttrCmd command(path);
     int result = 0;
-    qDebug() << this << "send command" << command.to_json();
     Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [&result, stbuf, this, path](QString message){
             file_attributes.insert(path, message);
 
@@ -125,7 +124,6 @@ int Filesystem::get_attr(const char *path, fuse_stat *stbuf, fuse_file_info *fi)
 int Filesystem::read_dir(const char *path, void *buf, fuse_fill_dir_t filler, fuse_off_t off, fuse_file_info *fi, fuse_readdir_flags flags)
 {
     ReadDirCmd command(path);
-    qDebug() << "send command" << command.to_json();
     Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [buf, this, filler, &path](QString message){
             if(message.isEmpty())
             {
@@ -163,7 +161,6 @@ int Filesystem::read_dir(const char *path, void *buf, fuse_fill_dir_t filler, fu
 int Filesystem::mkdir(const char *path, fuse_mode_t mode)
 {
     MkDirCmd command(path);
-    qDebug() << "send command" << command.to_json();
     Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
@@ -175,7 +172,6 @@ int Filesystem::rmdir(const char *path)
         file_attributes.remove(path);
     }
     RmDirCmd command(path);
-    qDebug() << "send command" << command.to_json();
     Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
@@ -194,7 +190,6 @@ int Filesystem::rename(const char *oldpath, const char *newpath, unsigned int fl
     }
 
     RenameCmd command(oldpath, newpath);
-    qDebug() << "send command" << command.to_json();
     Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
@@ -202,7 +197,6 @@ int Filesystem::rename(const char *oldpath, const char *newpath, unsigned int fl
 int Filesystem::create_file(const char *path, fuse_mode_t mode, fuse_file_info *fi)
 {
     CreateFileCmd command(path);
-    qDebug() << "send command" << command.to_json();
     Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
@@ -220,7 +214,6 @@ int Filesystem::remove_file(const char *path)
         delete file.mutex;
     }
     RmFileCmd command(path);
-    qDebug() << "send command" << command.to_json();
     Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
@@ -256,7 +249,6 @@ int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t o
     int read_bytes = 0;
     ReadFileCmd command(path, size, off);
 
-    qDebug() << "send command" << command.to_json();
     Connection_pool::get_instance()->send_binary(command).then(QtFuture::Launch::Sync, [buf, size, &read_bytes](QByteArray message){
         if(message.isEmpty())
         {
@@ -282,7 +274,6 @@ int Filesystem::write_file(const char *path, const char *buf, size_t size, fuse_
     QMutexLocker<QMutex> lock(mutex);
 
     WriteFileCmd command(path, QString(buf).toUtf8().toBase64(), size, off);
-    qDebug() << "send command" << command.to_json();
     Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
