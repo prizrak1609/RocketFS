@@ -1,6 +1,5 @@
 #pragma once
 
-#include "connection_pool.h"
 #include <QObject>
 #include <QFuture>
 #include <QThread>

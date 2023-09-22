@@ -10,11 +10,10 @@
 #include "renamecmd.h"
 #include "createfilecmd.h"
 #include "rmfilecmd.h"
-#include "openfilecmd.h"
 #include "readfilecmd.h"
 #include "writefilecmd.h"
-#include "closefilecmd.h"
 #include "statfscmd.h"
+#include "connection_pool.h"
 
 Filesystem::ptr Filesystem::instance = {};
 
@@ -232,9 +231,6 @@ int Filesystem::open_file(const char *path, fuse_file_info *fi)
         opened_files.insert(path, file);
     }
 
-//    OpenFileCmd command(path);
-//    qDebug() << "send command" << command.to_json();
-//    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
@@ -293,9 +289,6 @@ int Filesystem::close_file(const char *path, fuse_file_info *fi)
         }
     }
 
-//    CloseFileCmd command(path);
-//    qDebug() << "send command" << command.to_json();
-//    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 

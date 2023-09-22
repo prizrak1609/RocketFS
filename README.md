@@ -35,3 +35,5 @@ Goals:
     - you will see just new drive that is attached to your computer
 4. Multitasking - you can operate by different files in parallel
     - like on any other drive
+
+If you want to see all features please look into [Features document](Features.md)

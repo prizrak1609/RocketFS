@@ -8,6 +8,10 @@
 #include <sys/stat.h>
 #include <QStorageInfo>
 
+constexpr int kWindowsDirMode = 16895;
+constexpr int kWindowsFileMode = 33206;
+constexpr int kBlockSize = 4096;
+
 Server::Server(QObject *parent) : QObject{parent}, web_socket_server(new QWebSocketServer("File transfer", QWebSocketServer::NonSecureMode, this))
 {
     if(web_socket_server->listen(QHostAddress::Any, 8091))
@@ -210,32 +214,12 @@ void Server::rm_file(QString path)
 
 void Server::open_file(QString path)
 {
-    if(opened_files.contains(path))
-    {
-        OpenedFile file = opened_files.value(path);
-        QMutexLocker<QMutex> lock(file.mutex);
-        file.links++;
-        opened_files[path] = file;
-    } else
-    {
-        if(QFileInfo::exists(path))
-        {
-            OpenedFile file;
-            QMutexLocker<QMutex> lock(file.mutex);
-            file.file = new QFile(path);
-            file.file->open(QFile::ReadWrite);
-            file.links = 1;
-            opened_files.insert(path, file);
-        }
-    }
-    qDebug() << "open_file: response";
+    qDebug() << "open_file: unsupported";
     qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
 }
 
 void Server::read_file(QString path, int64_t size, int64_t off)
 {
-//    OpenedFile file = opened_files.value(path);
-//    QMutexLocker<QMutex> lock(file.mutex);
     QFile file(path);
     if (file.exists())
     {
@@ -252,8 +236,6 @@ void Server::read_file(QString path, int64_t size, int64_t off)
 
 void Server::write_file(QString path, QString buf, int64_t size, int64_t off)
 {
-//    OpenedFile file = opened_files.value(path);
-//    QMutexLocker<QMutex> lock(file.mutex);
     QFile file(path);
     if (file.exists())
     {
@@ -268,21 +250,7 @@ void Server::write_file(QString path, QString buf, int64_t size, int64_t off)
 
 void Server::close_file(QString path)
 {
-    if(opened_files.contains(path))
-    {
-        OpenedFile file = opened_files.value(path);
-        QMutexLocker<QMutex> lock(file.mutex);
-        file.links--;
-        if(file.links <= 0)
-        {
-            file.file->close();
-            opened_files.remove(path);
-        } else
-        {
-            opened_files[path] = file;
-        }
-    }
-    qDebug() << "close_file: response";
+    qDebug() << "close_file: unsupported";
     qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
 }
 
@@ -308,15 +276,15 @@ void Server::stat_to_json(struct stat* file_stat, QJsonObject& result, bool is_d
     result["st_ino"] = (qint64)file_stat->st_ino;
     if(is_dir)
     {
-        result["st_mode"] = 16895;
+        result["st_mode"] = kWindowsDirMode;
     } else
     {
-        result["st_mode"] = 33206;
+        result["st_mode"] = kWindowsFileMode;
     }
     result["st_nlink"] = (qint64)file_stat->st_nlink;
     result["st_size"] = (qint64)file_stat->st_size;
-    result["st_blksize"] = 4096;
-    result["st_blocks"] = (qint64)(file_stat->st_size + 4095) / 4096;
+    result["st_blksize"] = kBlockSize;
+    result["st_blocks"] = (qint64)(file_stat->st_size + kBlockSize - 1) / kBlockSize;
     result["st_atime_tv_sec"] = 0;
     result["st_atime_tv_nsec"] = (qint64)file_stat->st_atime;
     result["st_mtim_tv_sec"] = 0;

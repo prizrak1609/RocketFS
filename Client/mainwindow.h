@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
-#include "connection_pool.h"
+#include <QAbstractSocket>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }

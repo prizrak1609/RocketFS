@@ -9,7 +9,7 @@ Connection_pool::ptr Connection_pool::instance = {};
 Connection_pool::Connection_pool(QObject *parent, QString url_) : QObject{parent}, url(url_)
 {
     int count  = QThread::idealThreadCount();
-    count = 2;
+    count = 1; // TODO: remove this line after implementing multithreading
     for(int i = 0; i < count; i++)
     {
         Connection* conn = new Connection(this, url);

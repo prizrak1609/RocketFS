@@ -2,7 +2,7 @@
 #include "ui_mainwindow.h"
 #include "connection/connection_pool.h"
 #include "filesystem/filesystem.h"
-#include <QMetaEnum>>
+#include <QMetaEnum>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)

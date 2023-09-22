@@ -21,15 +21,6 @@ public slots:
 private:
     QWebSocketServer* web_socket_server;
     QList<QWebSocket*> clients;
-
-    struct OpenedFile
-    {
-        QFile* file = nullptr;
-        int links = 0;
-        QMutex* mutex = new QMutex();
-    };
-
-    QMap<QString, OpenedFile> opened_files;
     
     void get_attr(QString path);
     void read_dir(QString path);

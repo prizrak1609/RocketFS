@@ -41,7 +41,9 @@ void Connection::send(QString command)
 void Connection::on_error(QAbstractSocket::SocketError error_)
 {
     qDebug() << this << "error:" << error_;
+
     emit error(error_);
+
     idle.exchange(true);
 }
 
