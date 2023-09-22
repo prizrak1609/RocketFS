@@ -1,14 +1,10 @@
 #include "filesystem.h"
 #include <QDebug>
 #include "filesystemimpl.h"
-#include "connection_pool.h"
 
 void Filesystem::run()
 {
     qDebug() << "Start filesystem " << QThread::currentThreadId();
-
-    cache = new QDir(cache_folder);
-    cache->mkpath(cache_folder);
 
     fuse3_operations operations =
         {
@@ -27,7 +23,7 @@ void Filesystem::run()
             &FileSystemImpl::open_file, // int (*open)(const char *path, struct fuse3_file_info *fi);
             &FileSystemImpl::read_file, // int (*read)(const char *path, char *buf, size_t size, fuse_off_t off, struct fuse3_file_info *fi);
             &FileSystemImpl::write_file, // int (*write)(const char *path, const char *buf, size_t size, fuse_off_t off, struct fuse3_file_info *fi);
-            nullptr, // int (*statfs)(const char *path, struct fuse_statvfs *stbuf);
+            &FileSystemImpl::stat_fs, // int (*statfs)(const char *path, struct fuse_statvfs *stbuf);
             nullptr, // int (*flush)(const char *path, struct fuse3_file_info *fi);
             &FileSystemImpl::close_file, // int (*release)(const char *path, struct fuse3_file_info *fi);
             nullptr, // int (*fsync)(const char *path, int datasync, struct fuse3_file_info *fi);
@@ -52,10 +48,10 @@ void Filesystem::run()
     constexpr int argc = 7;
     char debug[] = "-d";
     char foreground[] = "-f";
-    char allow_other[] = "-o";
-    char allow_other1[] = "allow_other";
+    char additional_param[] = "-o";
+    char allow_other_value[] = "allow_other";
     char auto_mount[] = "auto_unmount";
     std::string mount = mount_path.toStdString();
-    char* argv[argc] = { debug, foreground, allow_other, allow_other1, allow_other, auto_mount, (char*)mount.c_str() };
+    char* argv[argc] = { debug, foreground, additional_param, allow_other_value, additional_param, auto_mount, (char*)mount.c_str() };
     fuse_main(argc, argv, &operations, this);
 }

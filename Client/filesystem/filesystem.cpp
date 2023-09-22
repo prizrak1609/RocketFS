@@ -14,25 +14,32 @@
 #include "readfilecmd.h"
 #include "writefilecmd.h"
 #include "closefilecmd.h"
+#include "statfscmd.h""
 
-Filesystem* Filesystem::instance = nullptr;
+Filesystem::ptr Filesystem::instance = {};
+
+constexpr const char* kFileAttributesName = "file_attributes.json";
 
 Filesystem::Filesystem(QObject *parent) : QThread{parent}
 {
     connect(this, &QThread::finished, this, &QObject::deleteLater);
-    setTerminationEnabled(true);
 }
 
 Filesystem::~Filesystem()
 {
+    for (OpenedFile& pair : opened_files.values())
+    {
+        delete pair.mutex;
+    }
+
     quit();
 }
 
-Filesystem* Filesystem::get_instance()
+Filesystem::ptr& Filesystem::get_instance()
 {
     static std::once_flag flag;
     std::call_once(flag, [&]{
-        Filesystem::instance = new Filesystem();
+        Filesystem::instance.reset(new Filesystem());
     });
     return Filesystem::instance;
 }
@@ -41,9 +48,11 @@ void* Filesystem::init(fuse3_conn_info *conn, fuse3_config *conf)
 {
     conn->capable |= FUSE_CAP_CASE_INSENSITIVE | FUSE_READDIR_PLUS | FUSE_CAP_ASYNC_DIO | FUSE_CAP_ASYNC_READ;
 
-    QJsonObject attributes_obj;
+    cache.setPath(cache_folder);
+    cache.mkpath(cache_folder);
 
-    QFile attributes_file("file_attributes.json");
+    QJsonObject attributes_obj;
+    QFile attributes_file(kFileAttributesName);
     if(attributes_file.exists())
     {
         attributes_file.open(QFile::ReadOnly);
@@ -65,13 +74,12 @@ void* Filesystem::init(fuse3_conn_info *conn, fuse3_config *conf)
 void Filesystem::destroy(void *data)
 {
     QJsonObject attributes_obj;
-
     for(const QString& key : file_attributes.keys())
     {
         attributes_obj[key] = file_attributes.value(key);
     }
 
-    QFile attributes_file("file_attributes.json");
+    QFile attributes_file(kFileAttributesName);
     if(attributes_file.exists())
     {
         attributes_file.remove();
@@ -85,25 +93,28 @@ int Filesystem::get_attr(const char *path, fuse_stat *stbuf, fuse_file_info *fi)
 {
     if(file_attributes.contains(path))
     {
-        convert_to_stat(file_attributes.value(path), stbuf);
-        return 0;
+        QString message = file_attributes.value(path);
+        if (!message.isEmpty())
+        {
+            convert_to_stat(message, stbuf);
+            return 0;
+        }
+
+        return -ENOENT;
     }
 
     GetAttrCmd command(path);
     int result = 0;
-    if(print_logs)
-    qDebug() << "send command" << command.to_json();
-    pool->send_text(command).then(QtFuture::Launch::Sync, [&result, stbuf, this, path](QString message){
+    qDebug() << this << "send command" << command.to_json();
+    Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [&result, stbuf, this, path](QString message){
+            file_attributes.insert(path, message);
+
             if(message.isEmpty())
             {
-                                    if(print_logs)
-                qDebug() << "receive result none";
                 result = -ENOENT;
                 return;
             }
-            if(print_logs)
-            qDebug() << "receive result" << message;
-            file_attributes.insert(path, message);
+
             convert_to_stat(message, stbuf);
         }).waitForFinished();
     return result;
@@ -112,15 +123,13 @@ int Filesystem::get_attr(const char *path, fuse_stat *stbuf, fuse_file_info *fi)
 int Filesystem::read_dir(const char *path, void *buf, fuse_fill_dir_t filler, fuse_off_t off, fuse_file_info *fi, fuse_readdir_flags flags)
 {
     ReadDirCmd command(path);
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_text(command).then([buf, this, filler, &path](QString message){
+    Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [buf, this, filler, &path](QString message){
             if(message.isEmpty())
             {
                 return;
             }
-            if(print_logs)
-            qDebug() << "receive result" << message;
+
             QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
             QJsonArray array = doc.array();
             for(QJsonValueRef item : array)
@@ -141,8 +150,6 @@ int Filesystem::read_dir(const char *path, void *buf, fuse_fill_dir_t filler, fu
 
                 if(filler(buf, file_name.toStdString().c_str(), stats, 0, FUSE_FILL_DIR_PLUS) == 1) // buffer is full
                 {
-                    if(print_logs)
-                    qDebug() << "buffer is full";
                     emit error("read_dir: buffer is full");
                     break;
                 }
@@ -154,11 +161,8 @@ int Filesystem::read_dir(const char *path, void *buf, fuse_fill_dir_t filler, fu
 int Filesystem::mkdir(const char *path, fuse_mode_t mode)
 {
     MkDirCmd command(path);
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_text(command).waitForFinished();
-    if(print_logs)
-    qDebug() << "receive result mkdir";
+    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
@@ -169,11 +173,8 @@ int Filesystem::rmdir(const char *path)
         file_attributes.remove(path);
     }
     RmDirCmd command(path);
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_text(command).waitForFinished();
-    if(print_logs)
-    qDebug() << "receive result rmdir";
+    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
@@ -191,22 +192,16 @@ int Filesystem::rename(const char *oldpath, const char *newpath, unsigned int fl
     }
 
     RenameCmd command(oldpath, newpath);
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_text(command).waitForFinished();
-    if(print_logs)
-    qDebug() << "receive result rename";
+    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
 int Filesystem::create_file(const char *path, fuse_mode_t mode, fuse_file_info *fi)
 {
     CreateFileCmd command(path);
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_text(command).waitForFinished();
-    if(print_logs)
-    qDebug() << "receive result create_file";
+    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
@@ -223,17 +218,13 @@ int Filesystem::remove_file(const char *path)
         delete file.mutex;
     }
     RmFileCmd command(path);
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_text(command).waitForFinished();
-    if(print_logs)
-    qDebug() << "receive result remove_file";
+    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
 int Filesystem::open_file(const char *path, fuse_file_info *fi)
 {
-    qDebug() << "open file in thread " << QThread::currentThreadId();
     if (opened_files.contains(path))
     {
         OpenedFile file = opened_files.value(path);
@@ -247,17 +238,13 @@ int Filesystem::open_file(const char *path, fuse_file_info *fi)
     }
 
     OpenFileCmd command(path);
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_text(command).waitForFinished();
-    if(print_logs)
-    qDebug() << "receive result open_file";
+    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
 int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t off, fuse_file_info *fi)
 {
-    qDebug() << "read file in thread " << QThread::currentThreadId();
     QMutex* mutex = nullptr;
     if (opened_files.contains(path))
     {
@@ -266,46 +253,18 @@ int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t o
 
     QMutexLocker<QMutex> lock(mutex);
 
-//    QString file_path = cache_path(path);
-
-//    if(file_path.endsWith("folder.jpg") || file_path.endsWith("desktop.ini"))
-//    {
-//        return -ENOENT;
-//    }
-
     memset(buf, 0, size);
 
     int read_bytes = 0;
-
-//    QFile file(file_path);
-//    if (file.exists())
-//    {
-//        file.seek(off);
-//        QByteArray message = file.read(size);
-//        size_t source_size = size;
-//        if (message.size() < size)
-//        {
-//            source_size = message.size();
-//        }
-
-//        read_bytes = source_size;
-
-//        memcpy_s(buf, size, message, source_size);
-//        return 0;
-//    }
-
     ReadFileCmd command(path, size, off);
 
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_binary(command).then(QtFuture::Launch::Sync, [buf, size, &read_bytes, this](QByteArray message){
+    Connection_pool::get_instance()->send_binary(command).then(QtFuture::Launch::Sync, [buf, size, &read_bytes](QByteArray message){
         if(message.isEmpty())
         {
             read_bytes = -ENOENT;
             return;
         }
-        if(print_logs)
-        qDebug() << "receive result" << message.size();
 
         size_t source_size = size;
         if (message.size() < size)
@@ -322,7 +281,6 @@ int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t o
 
 int Filesystem::write_file(const char *path, const char *buf, size_t size, fuse_off_t off, fuse_file_info *fi)
 {
-    qDebug() << "write file in thread " << QThread::currentThreadId();
     QMutex* mutex = nullptr;
     if (opened_files.contains(path))
     {
@@ -331,32 +289,14 @@ int Filesystem::write_file(const char *path, const char *buf, size_t size, fuse_
 
     QMutexLocker<QMutex> lock(mutex);
 
-//    QString file_path = cache_path(path);
-
-//    QFile file(file_path);
-//    if(!file.exists())
-//    {
-//        file.open(QFile::WriteOnly);
-//        file.close();
-//    }
-
-//    file.open(QFile::WriteOnly);
-//    file.seek(off);
-//    file.write(buf);
-//    file.close();
-
     WriteFileCmd command(path, QString(buf).toUtf8().toBase64(), size, off);
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_text(command).waitForFinished();
-    if(print_logs)
-    qDebug() << "receive result write_file";
+    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
 int Filesystem::close_file(const char *path, fuse_file_info *fi)
 {
-    qDebug() << "close file in thread " << QThread::currentThreadId();
     QMutex* mutex = nullptr;
     if (opened_files.contains(path))
     {
@@ -375,12 +315,33 @@ int Filesystem::close_file(const char *path, fuse_file_info *fi)
     QMutexLocker<QMutex> lock(mutex);
 
     CloseFileCmd command(path);
-    if(print_logs)
     qDebug() << "send command" << command.to_json();
-    pool->send_text(command).waitForFinished();
-    if(print_logs)
-    qDebug() << "receive result close_file";
+    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
+}
+
+int Filesystem::stat_fs(const char *path, fuse_statvfs *stbuf)
+{
+    StatFSCmd command(path);
+
+    int result = 0;
+    Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [&result, stbuf](QString message)
+    {
+        if(message.isEmpty())
+        {
+            result = -ENOENT;
+            return;
+        }
+
+        QJsonObject body = QJsonDocument::fromJson(message.toUtf8()).object();
+        stbuf->f_bsize = body["block_size"].toInteger();
+        stbuf->f_blocks = body["blocks_count"].toInteger();
+        stbuf->f_frsize = body["free_size"].toInteger();
+        stbuf->f_bfree = body["blocks_free_count"].toInteger();
+        stbuf->f_bavail = body["blocks_available_count"].toInteger();
+    }).waitForFinished();
+
+    return result;
 }
 
 QString Filesystem::cache_path(const char* path)

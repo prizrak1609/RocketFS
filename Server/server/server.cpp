@@ -6,6 +6,7 @@
 #include <QMutexLocker>
 #include <QJsonArray>
 #include <sys/stat.h>
+#include <QStorageInfo>
 
 Server::Server(QObject *parent) : QObject{parent}, web_socket_server(new QWebSocketServer("File transfer", QWebSocketServer::NonSecureMode, this))
 {
@@ -97,6 +98,11 @@ void Server::handle_text_message(QString message)
         QString path = obj["path"].toString();
         qDebug() << "close_file: " << path;
         close_file(path);
+    } else if(command == "stat_fs")
+    {
+        QString path = obj["path"].toString();
+        qDebug() << "stat_fs: " << path;
+        stat_fs(path);
     }
 }
 
@@ -266,6 +272,22 @@ void Server::close_file(QString path)
     }
     qDebug() << "close_file: response";
     qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+}
+
+void Server::stat_fs(QString path)
+{
+    QStorageInfo storage = QStorageInfo::root();
+    storage.setPath(path);
+
+    QJsonObject body;
+    body["block_size"] = storage.blockSize();
+    body["free_size"] = storage.bytesFree();
+    body["blocks_count"] = storage.bytesTotal() / storage.blockSize();
+    body["blocks_free_count"] = storage.bytesFree() / storage.blockSize();
+    body["blocks_available_count"] = storage.bytesAvailable() / storage.blockSize();
+
+    qDebug() << "stat_fs: response";
+    qobject_cast<QWebSocket *>(sender())->sendTextMessage(QJsonDocument(body).toJson(QJsonDocument::Compact));
 }
 
 void Server::stat_to_json(struct stat* file_stat, QJsonObject& result, bool is_dir)

@@ -13,22 +13,21 @@ class Filesystem : public QThread
 
     friend struct FileSystemImpl;
 public:
-    explicit Filesystem(QObject *parent = nullptr);
+    using ptr = std::unique_ptr<Filesystem>;
+
     ~Filesystem();
 
-    static Filesystem* get_instance();
+    static Filesystem::ptr& get_instance();
 
     QString cache_folder;
     QString mount_path;
-    Connection_pool* pool;
-    bool print_logs = true;
 
 signals:
     void error(QString);
 
 private:
-    static Filesystem* instance;
-    QDir* cache;
+    static ptr instance;
+    QDir cache;
     QMap<QString, QString> file_attributes;
 
     struct OpenedFile
@@ -38,6 +37,8 @@ private:
     };
 
     QMap<QString, OpenedFile> opened_files;
+
+    Filesystem(QObject *parent = nullptr);
 
     void* init(fuse3_conn_info *conn, fuse3_config *conf);
     int get_attr(const char *path, struct fuse_stat *stbuf, struct fuse3_file_info *fi);
@@ -51,6 +52,7 @@ private:
     int read_file(const char *path, char *buf, size_t size, fuse_off_t off, struct fuse3_file_info *fi);
     int write_file(const char *path, const char *buf, size_t size, fuse_off_t off, struct fuse3_file_info *fi);
     int close_file(const char *path, struct fuse3_file_info *fi);
+    int stat_fs(const char *path, struct fuse_statvfs *stbuf);
 
     void destroy(void* data);
     QString cache_path(const char *path);

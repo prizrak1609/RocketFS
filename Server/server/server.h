@@ -42,7 +42,8 @@ private:
     void read_file(QString path, int64_t size, int64_t off);
     void write_file(QString path, QString buf, int64_t size, int64_t off);
     void close_file(QString path);
-
+    
     void stat_to_json(struct stat* file_stat, QJsonObject& result, bool is_dir);
+    void stat_fs(QString path);
 };
 

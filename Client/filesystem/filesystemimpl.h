@@ -68,5 +68,10 @@ struct FileSystemImpl
     {
         Filesystem::get_instance()->destroy(data);
     }
+
+    static int stat_fs(const char *path, struct fuse_statvfs *stbuf)
+    {
+        return Filesystem::get_instance()->stat_fs(path, stbuf);
+    }
 };
 

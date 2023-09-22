@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QMainWindow>
-#include "filesystem/filesystem.h"
 #include "connection_pool.h"
 
 QT_BEGIN_NAMESPACE
@@ -22,6 +21,4 @@ public slots:
 
 private:
     Ui::MainWindow *ui;
-    Filesystem* filesystem;
-    Connection_pool* pool;
 };

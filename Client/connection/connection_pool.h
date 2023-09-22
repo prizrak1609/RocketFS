@@ -12,24 +12,26 @@ class Connection_pool : public QObject
 {
     Q_OBJECT
 public:
-    explicit Connection_pool(QObject *parent = nullptr, QString url_ = "");
+    using ptr = std::unique_ptr<Connection_pool>;
     ~Connection_pool();
 
-    Connection* get_connection();
+    static ptr& init(QObject *parent = nullptr, QString url_ = "");
+    static ptr& get_instance();
+
     QFuture<QString> send_text(ICommand& command);
     QFuture<QByteArray> send_binary(ICommand& command);
-    void set_print_logs(bool print);
-
-public slots:
-//    void init();
 
 signals:
     void request(QString command);
 
 private:
-    bool print_logs;
+    static ptr instance;
     QList<Connection*> idle;
     QList<Connection*> busy;
     QString url;
     QMutex send_mutex;
+
+    Connection_pool(QObject *parent = nullptr, QString url_ = "");
+
+    Connection* get_connection();
 };

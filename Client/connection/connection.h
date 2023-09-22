@@ -17,7 +17,6 @@ public:
 
     bool is_idle() const;
     QString get_last_command() const;
-    bool print_logs = true;
 
 signals:
     void response_string(QString);
@@ -32,7 +31,7 @@ public slots:
     void state_changed(QAbstractSocket::SocketState state);
 
 private:
-    QMutexLocker<QMutex> locker;
+    std::atomic_bool idle;
     QUrl url;
     QWebSocket socket;
     QString last_command;

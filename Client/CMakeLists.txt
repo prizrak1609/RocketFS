@@ -43,6 +43,16 @@ set(PROJECT_SOURCES
         command/createfilecmd.cpp
         command/rmfilecmd.h
         command/rmfilecmd.cpp
+        command/openfilecmd.h
+        command/openfilecmd.cpp
+        command/readfilecmd.h
+        command/readfilecmd.cpp
+        command/writefilecmd.h
+        command/writefilecmd.cpp
+        command/closefilecmd.h
+        command/closefilecmd.cpp
+        command/statfscmd.h
+        command/statfscmd.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -50,10 +60,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 qt_add_executable(Client
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        command/openfilecmd.h command/openfilecmd.cpp
-        command/readfilecmd.h command/readfilecmd.cpp
-        command/writefilecmd.h command/writefilecmd.cpp
-        command/closefilecmd.h command/closefilecmd.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET Client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
