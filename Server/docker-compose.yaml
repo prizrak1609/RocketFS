@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  file-transfer-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        email: "qt login"
+        password: "qt password"
+    user: 0:0
+    ports:
+      - 8091:8091
+      - "52000-52100:52000-52100"
+    volumes:
+      - /home/dima/general_storage:/media/general_storage
+      - /media/hdd:/media/hdd
+      - /media/usb:/media/usb
