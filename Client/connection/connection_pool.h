@@ -23,6 +23,10 @@ public:
 
 signals:
     void request(QString command);
+    void error(QAbstractSocket::SocketError);
+
+public slots:
+    void on_error(QAbstractSocket::SocketError);
 
 private:
     static ptr instance;

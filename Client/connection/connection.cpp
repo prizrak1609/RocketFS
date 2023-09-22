@@ -38,9 +38,10 @@ void Connection::send(QString command)
     socket.sendTextMessage(command);
 }
 
-void Connection::error(QAbstractSocket::SocketError error)
+void Connection::on_error(QAbstractSocket::SocketError error_)
 {
-    qDebug() << this << "error:" << error;
+    qDebug() << this << "error:" << error_;
+    emit error(error_);
     idle.exchange(true);
 }
 

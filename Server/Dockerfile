@@ -16,7 +16,7 @@ ARG password
 
 RUN chmod 755 qt.run
 RUN ./qt.run --root /qt/installed --accept-licenses --accept-obligations --accept-messages --confirm-command \
-    --email $email --pw $password install "qt.qt6.652.gcc_64" "qt.qt6.652.addons.qtwebsockets" "qt.tools.cmake" "qt.tools.opensslv3"
+    --email "$email" --pw "$password" install "qt.qt6.652.gcc_64" "qt.qt6.652.addons.qtwebsockets" "qt.tools.cmake" "qt.tools.opensslv3"
 
 WORKDIR /qt/app
 

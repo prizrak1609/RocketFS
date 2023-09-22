@@ -27,6 +27,7 @@ signals:
 
 private:
     static ptr instance;
+    fuse_statvfs filesystem_stat;
     QDir cache;
     QMap<QString, QString> file_attributes;
 

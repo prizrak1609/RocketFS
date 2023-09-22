@@ -17,7 +17,8 @@ public:
 
 public slots:
     void connect();
-    void filesystem_error(QString);
+    void text_error(QString);
+    void socket_error(QAbstractSocket::SocketError);
 
 private:
     Ui::MainWindow *ui;

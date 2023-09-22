@@ -9,10 +9,12 @@ Connection_pool::ptr Connection_pool::instance = {};
 Connection_pool::Connection_pool(QObject *parent, QString url_) : QObject{parent}, url(url_)
 {
     int count  = QThread::idealThreadCount();
-    count = 1;
+    count = 2;
     for(int i = 0; i < count; i++)
     {
-        idle.push_back(new Connection(this, url));
+        Connection* conn = new Connection(this, url);
+        connect(conn, &Connection::error, this, &Connection_pool::on_error);
+        idle.push_back(conn);
     }
 }
 
@@ -108,4 +110,9 @@ QFuture<QByteArray> Connection_pool::send_binary(ICommand &command)
         idle.push_back(conn);
         return message;
     });
+}
+
+void Connection_pool::on_error(QAbstractSocket::SocketError err)
+{
+    emit error(err);
 }

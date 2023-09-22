@@ -21,13 +21,14 @@ public:
 signals:
     void response_string(QString);
     void response_bytes(QByteArray);
+    void error(QAbstractSocket::SocketError);
 
 public slots:
     void send(QString command);
     void on_connected();
     void on_text_message(QString message);
     void on_binary_message(QByteArray message);
-    void error(QAbstractSocket::SocketError error);
+    void on_error(QAbstractSocket::SocketError error_);
     void state_changed(QAbstractSocket::SocketState state);
 
 private:

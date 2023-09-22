@@ -14,7 +14,7 @@
 #include "readfilecmd.h"
 #include "writefilecmd.h"
 #include "closefilecmd.h"
-#include "statfscmd.h""
+#include "statfscmd.h"
 
 Filesystem::ptr Filesystem::instance = {};
 
@@ -23,6 +23,8 @@ constexpr const char* kFileAttributesName = "file_attributes.json";
 Filesystem::Filesystem(QObject *parent) : QThread{parent}
 {
     connect(this, &QThread::finished, this, &QObject::deleteLater);
+
+    std::memset(&filesystem_stat, 0, sizeof(decltype(filesystem_stat)));
 }
 
 Filesystem::~Filesystem()
@@ -237,19 +239,15 @@ int Filesystem::open_file(const char *path, fuse_file_info *fi)
         opened_files.insert(path, file);
     }
 
-    OpenFileCmd command(path);
-    qDebug() << "send command" << command.to_json();
-    Connection_pool::get_instance()->send_text(command).waitForFinished();
+//    OpenFileCmd command(path);
+//    qDebug() << "send command" << command.to_json();
+//    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
 int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t off, fuse_file_info *fi)
 {
-    QMutex* mutex = nullptr;
-    if (opened_files.contains(path))
-    {
-        mutex = opened_files.value(path).mutex;
-    }
+    QMutex* mutex = opened_files.value(path).mutex;
 
     QMutexLocker<QMutex> lock(mutex);
 
@@ -266,26 +264,20 @@ int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t o
             return;
         }
 
-        size_t source_size = size;
+        read_bytes = size;
         if (message.size() < size)
         {
-            source_size = message.size();
+            read_bytes = message.size();
         }
 
-        read_bytes = source_size;
-
-        memcpy_s(buf, size, message, source_size);
+        memcpy_s(buf, size, message, read_bytes);
     }).waitForFinished();
     return read_bytes;
 }
 
 int Filesystem::write_file(const char *path, const char *buf, size_t size, fuse_off_t off, fuse_file_info *fi)
 {
-    QMutex* mutex = nullptr;
-    if (opened_files.contains(path))
-    {
-        mutex = opened_files.value(path).mutex;
-    }
+    QMutex* mutex = opened_files.value(path).mutex;
 
     QMutexLocker<QMutex> lock(mutex);
 
@@ -297,7 +289,6 @@ int Filesystem::write_file(const char *path, const char *buf, size_t size, fuse_
 
 int Filesystem::close_file(const char *path, fuse_file_info *fi)
 {
-    QMutex* mutex = nullptr;
     if (opened_files.contains(path))
     {
         OpenedFile file = opened_files.value(path);
@@ -307,25 +298,28 @@ int Filesystem::close_file(const char *path, fuse_file_info *fi)
             opened_files.remove(path);
         } else
         {
-            mutex = file.mutex;
             opened_files[path] = file;
         }
     }
 
-    QMutexLocker<QMutex> lock(mutex);
-
-    CloseFileCmd command(path);
-    qDebug() << "send command" << command.to_json();
-    Connection_pool::get_instance()->send_text(command).waitForFinished();
+//    CloseFileCmd command(path);
+//    qDebug() << "send command" << command.to_json();
+//    Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
 
 int Filesystem::stat_fs(const char *path, fuse_statvfs *stbuf)
 {
+    if(filesystem_stat.f_bsize > 0)
+    {
+        memcpy_s(stbuf, sizeof(fuse_statvfs), &filesystem_stat, sizeof(decltype(filesystem_stat)));
+        return 0;
+    }
+
     StatFSCmd command(path);
 
     int result = 0;
-    Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [&result, stbuf](QString message)
+    Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [&result, stbuf, this](QString message)
     {
         if(message.isEmpty())
         {
@@ -334,11 +328,13 @@ int Filesystem::stat_fs(const char *path, fuse_statvfs *stbuf)
         }
 
         QJsonObject body = QJsonDocument::fromJson(message.toUtf8()).object();
-        stbuf->f_bsize = body["block_size"].toInteger();
-        stbuf->f_blocks = body["blocks_count"].toInteger();
-        stbuf->f_frsize = body["free_size"].toInteger();
-        stbuf->f_bfree = body["blocks_free_count"].toInteger();
-        stbuf->f_bavail = body["blocks_available_count"].toInteger();
+        filesystem_stat.f_bsize = body["block_size"].toInteger();
+        filesystem_stat.f_blocks = body["blocks_count"].toInteger();
+        filesystem_stat.f_frsize = body["free_size"].toInteger();
+        filesystem_stat.f_bfree = body["blocks_free_count"].toInteger();
+        filesystem_stat.f_bavail = body["blocks_available_count"].toInteger();
+
+        memcpy_s(stbuf, sizeof(fuse_statvfs), &filesystem_stat, sizeof(decltype(filesystem_stat)));
     }).waitForFinished();
 
     return result;

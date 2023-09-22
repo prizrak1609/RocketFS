@@ -234,22 +234,34 @@ void Server::open_file(QString path)
 
 void Server::read_file(QString path, int64_t size, int64_t off)
 {
-    OpenedFile file = opened_files.value(path);
-    QMutexLocker<QMutex> lock(file.mutex);
-    file.file->seek(off);
-    QByteArray buf = file.file->read(size);
-    qDebug() << "read_file: response";
-    qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(buf);
+//    OpenedFile file = opened_files.value(path);
+//    QMutexLocker<QMutex> lock(file.mutex);
+    QFile file(path);
+    if (file.exists())
+    {
+        file.open(QFile::ReadOnly);
+        file.seek(off);
+        QByteArray buf = file.read(size);
+        qDebug() << "read_file: response";
+        qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(buf);
+        return;
+    }
+    qDebug() << "read_file: empty response";
+    qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(QByteArray());
 }
 
 void Server::write_file(QString path, QString buf, int64_t size, int64_t off)
 {
-    OpenedFile file = opened_files.value(path);
-    QMutexLocker<QMutex> lock(file.mutex);
-    file.file->seek(off);
-
-    QString encoded = QByteArray::fromBase64(buf.toUtf8());
-    file.file->write(encoded.toUtf8());
+//    OpenedFile file = opened_files.value(path);
+//    QMutexLocker<QMutex> lock(file.mutex);
+    QFile file(path);
+    if (file.exists())
+    {
+        file.open(QFile::WriteOnly);
+        file.seek(off);
+        QString encoded = QByteArray::fromBase64(buf.toUtf8());
+        file.write(encoded.toUtf8());
+    }
     qDebug() << "write_file: response";
     qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
 }
