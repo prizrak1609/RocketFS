@@ -1,6 +1,6 @@
 # This project is under development
 
-## Purpose
+## About
 
 At some point of time you have a lot of information on your PC and hard drive space is about to end.
 
