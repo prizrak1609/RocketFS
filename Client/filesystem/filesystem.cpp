@@ -269,7 +269,7 @@ int Filesystem::write_file(const char *path, const char *buf, size_t size, fuse_
 
     QMutexLocker<QMutex> lock(mutex);
 
-    WriteFileCmd command(path, QString(buf).toUtf8().toBase64(), size, off);
+    WriteFileCmd command(path, QByteArray(buf).toBase64(), size, off);
     Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
