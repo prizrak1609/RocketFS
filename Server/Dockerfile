@@ -5,6 +5,7 @@ RUN mkdir -p /qt/app
 WORKDIR /qt
 
 RUN apt-get update
+RUN apt-get apt-utils
 RUN apt-get install -y build-essential libgl1-mesa-dev wget cmake libxcb-icccm4 libxcb-image0  libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 \
     libxcb-xkb1 libxkbcommon-x11-0 libdbus-1-3
 RUN apt-get install -y qt6-base-dev-tools
@@ -17,6 +18,8 @@ ARG password
 RUN chmod 755 qt.run
 RUN ./qt.run --root /qt/installed --accept-licenses --accept-obligations --accept-messages --confirm-command \
     --email "$email" --pw "$password" install "qt.qt6.652.gcc_64" "qt.qt6.652.addons.qtwebsockets" "qt.tools.cmake" "qt.tools.opensslv3"
+
+RUN rm qt.run
 
 WORKDIR /qt/app
 

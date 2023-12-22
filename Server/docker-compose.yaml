@@ -5,8 +5,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        email: "qt login"
-        password: "qt password"
+        email: "${QT_EMAIL}"
+        password: "${QT_PASS}"
     user: 0:0
     ports:
       - 8091:8091
