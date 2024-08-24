@@ -113,6 +113,12 @@ void Server::handle_text_message(QString message)
 void Server::disconnected()
 {
     QWebSocket *client = qobject_cast<QWebSocket *>(sender());
+
+    QObject::disconnect(client, &QWebSocket::textMessageReceived, this, &Server::handle_text_message);
+    QObject::disconnect(client, &QWebSocket::disconnected, this, &Server::disconnected);
+
+    client->close();
+
     clients.removeAll(client);
     client->deleteLater();
     qDebug() << "disconnected: " << client;
