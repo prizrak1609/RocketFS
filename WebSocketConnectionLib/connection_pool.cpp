@@ -1,47 +1,51 @@
 #include "connection_pool.h"
 #include <QFuture>
 #include <QMutexLocker>
+#include <QMetaEnum>
+
+using namespace WebSocket;
+using namespace WebSocket::Command;
 
 constexpr int kWaitTimeSec = 1;
 
-Connection_pool::ptr Connection_pool::instance = {};
+Connection_pool::ptr Connection_pool::_instance = {};
 
-Connection_pool::Connection_pool(QObject *parent, QString url_) : QObject{parent}, url(url_)
+Connection_pool::Connection_pool(QObject *parent, QString url) : QObject{parent}, _url(url)
 {
     int count  = QThread::idealThreadCount();
-    count = 1; // TODO: remove this line after implementing multithreading
+    // count = 2; // TODO: remove this line after implementing multithreading
     for(int i = 0; i < count; i++)
     {
         Connection* conn = new Connection(this, url);
         connect(conn, &Connection::error, this, &Connection_pool::on_error);
-        idle.push_back(conn);
+        _idle.push_back(conn);
     }
 }
 
 Connection_pool::~Connection_pool()
 {
-    for(Connection* conn : idle)
+    for(Connection* conn : _idle)
     {
         delete conn;
     }
-    for(Connection* conn : busy)
+    for(Connection* conn : _busy)
     {
         delete conn;
     }
 }
 
-Connection_pool::ptr& Connection_pool::init(QObject *parent, QString url_)
+Connection_pool::ptr& Connection_pool::init(QObject *parent, QString url)
 {
     static std::once_flag flag;
     std::call_once(flag, [=](){
-        instance.reset(new Connection_pool(parent, url_));
+        _instance.reset(new Connection_pool(parent, url));
     });
-    return instance;
+    return _instance;
 }
 
 Connection_pool::ptr& Connection_pool::get_instance()
 {
-    return instance;
+    return _instance;
 }
 
 Connection* Connection_pool::get_connection()
@@ -50,15 +54,15 @@ Connection* Connection_pool::get_connection()
     while(true)
     {
         {
-            QMutexLocker<QMutex> lock(&send_mutex);
-            for(Connection* conn : idle)
+            QMutexLocker<QMutex> lock(&_send_mutex);
+            for(Connection* conn : _idle)
             {
                 if (conn->is_idle())
                 {
                     res = conn;
                     goto prepare_lists;
                 }
-                qDebug() << conn << "waiting for result:" << conn->get_last_command();
+                // qDebug() << conn << "waiting for result:" << conn->get_last_command();
             }
         }
         QThread::yieldCurrentThread();
@@ -68,9 +72,9 @@ Connection* Connection_pool::get_connection()
     prepare_lists:
 
     {
-        QMutexLocker<QMutex> lock(&send_mutex);
-        idle.removeOne(res);
-        busy.push_back(res);
+        QMutexLocker<QMutex> lock(&_send_mutex);
+        _idle.removeOne(res);
+        _busy.push_back(res);
     }
 
     return res;
@@ -87,9 +91,9 @@ QFuture<QString> Connection_pool::send_text(ICommand &command)
     emit request(command.to_json());
 
     return result.then(QtFuture::Launch::Sync, [this, conn](QString message) -> QString {
-        QMutexLocker<QMutex> lock(&send_mutex);
-        busy.removeOne(conn);
-        idle.push_back(conn);
+        QMutexLocker<QMutex> lock(&_send_mutex);
+        _busy.removeOne(conn);
+        _idle.push_back(conn);
         return message;
     });
 }
@@ -105,14 +109,14 @@ QFuture<QByteArray> Connection_pool::send_binary(ICommand &command)
     emit request(command.to_json());
 
     return result.then(QtFuture::Launch::Sync, [this, conn](QByteArray message) -> QByteArray {
-        QMutexLocker<QMutex> lock(&send_mutex);
-        busy.removeOne(conn);
-        idle.push_back(conn);
+        QMutexLocker<QMutex> lock(&_send_mutex);
+        _busy.removeOne(conn);
+        _idle.push_back(conn);
         return message;
     });
 }
 
 void Connection_pool::on_error(QAbstractSocket::SocketError err)
 {
-    emit error(err);
+    emit error(QString("error: ").append(QMetaEnum::fromType<QAbstractSocket::SocketError>().valueToKey(err)));
 }

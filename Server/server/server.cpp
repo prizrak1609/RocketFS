@@ -143,20 +143,15 @@ void Server::read_dir(QString path)
     QDir dir(path);
     for(const QString& item : dir.entryList())
     {
-        struct stat* file_stat = new struct stat();
         QString item_full_path = path + dir.separator() + item;
-        stat(item_full_path.toStdString().c_str(), file_stat);
 
         QFileInfo file(item_full_path);
-        QJsonObject stat;
-        stat_to_json(file_stat, stat, file.isDir());
 
         QJsonObject entry;
         entry["file_name"] = item;
-        entry["stats"] = stat;
+        entry["stats"] = stat_to_json(file);
 
         result.append(entry);
-        delete file_stat;
     }
 
     qDebug() << "read_dir: response";
@@ -270,25 +265,12 @@ void Server::stat_fs(QString path)
     qobject_cast<QWebSocket *>(sender())->sendTextMessage(QJsonDocument(body).toJson(QJsonDocument::Compact));
 }
 
-void Server::stat_to_json(struct stat* file_stat, QJsonObject& result, bool is_dir)
+QJsonObject Server::stat_to_json(const QFileInfo& info)
 {
-    result["st_dev"] = (qint64)file_stat->st_dev;
-    result["st_ino"] = (qint64)file_stat->st_ino;
-    if(is_dir)
-    {
-        result["st_mode"] = kWindowsDirMode;
-    } else
-    {
-        result["st_mode"] = kWindowsFileMode;
-    }
-    result["st_nlink"] = (qint64)file_stat->st_nlink;
-    result["st_size"] = (qint64)file_stat->st_size;
-    result["st_blksize"] = kBlockSize;
-    result["st_blocks"] = (qint64)(file_stat->st_size + kBlockSize - 1) / kBlockSize;
-    result["st_atime_tv_sec"] = 0;
-    result["st_atime_tv_nsec"] = (qint64)file_stat->st_atime;
-    result["st_mtim_tv_sec"] = 0;
-    result["st_mtim_tv_nsec"] = (qint64)file_stat->st_mtime;
-    result["st_ctim_tv_sec"] = 0;
-    result["st_ctim_tv_nsec"] = (qint64)file_stat->st_ctime;
+    QJsonObject res;
+    res["size"] = info.size();
+    res["isDir"] = info.isDir();
+    res["isExec"] = info.isExecutable();
+    res["isWritable"] = info.isWritable();
+    return res;
 }

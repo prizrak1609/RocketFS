@@ -17,8 +17,8 @@ public:
 
 public slots:
     void connect();
+    void refresh();
     void text_error(QString);
-    void socket_error(QAbstractSocket::SocketError);
 
 private:
     Ui::MainWindow *ui;

@@ -1,14 +1,15 @@
 #pragma once
 
 #include "ICommand.h"
-#include "fuse/winfsp_fuse.h"
 #include <QObject>
+
+using namespace WebSocket::Command;
 
 class ReadFileCmd : public QObject, public ICommand
 {
     Q_OBJECT
 public:
-    explicit ReadFileCmd(QString path_, size_t size_, fuse_off_t off_, QObject *parent = nullptr);
+    explicit ReadFileCmd(QString path_, size_t size_, qint64 off_, QObject *parent = nullptr);
 
     // ICommand interface
 public:
@@ -17,6 +18,6 @@ public:
 private:
     QString path;
     size_t size;
-    fuse_off_t off;
+    qint64 off;
 };
 

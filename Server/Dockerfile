@@ -24,7 +24,6 @@ WORKDIR /qt/app
 
 COPY . /qt/app
 
-RUN rm qt-unified-linux-x64-4.6.1-online.run
 RUN mkdir build
 
 WORKDIR /qt/app/build

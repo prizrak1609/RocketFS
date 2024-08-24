@@ -6,47 +6,31 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>460</width>
-    <height>300</height>
+    <width>800</width>
+    <height>600</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="maximumSize">
    <size>
-    <width>460</width>
-    <height>300</height>
+    <width>9999999</width>
+    <height>9999999</height>
    </size>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QLineEdit" name="drive_letter">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>161</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="acceptDrops">
-     <bool>false</bool>
-    </property>
-    <property name="toolTip">
-     <string/>
-    </property>
-    <property name="text">
-     <string>Y:</string>
-    </property>
-    <property name="placeholderText">
-     <string>Drive letter</string>
-    </property>
-   </widget>
    <widget class="QLineEdit" name="server_addr">
     <property name="geometry">
      <rect>
-      <x>180</x>
-      <y>10</y>
+      <x>70</x>
+      <y>20</y>
       <width>161</width>
       <height>24</height>
      </rect>
@@ -68,7 +52,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>100</y>
+      <y>80</y>
       <width>441</width>
       <height>16</height>
      </rect>
@@ -80,8 +64,8 @@
    <widget class="QPushButton" name="connect_button">
     <property name="geometry">
      <rect>
-      <x>360</x>
-      <y>10</y>
+      <x>240</x>
+      <y>20</y>
       <width>80</width>
       <height>24</height>
      </rect>
@@ -94,7 +78,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>130</y>
+      <y>110</y>
       <width>441</width>
       <height>16</height>
      </rect>
@@ -106,7 +90,7 @@
    <widget class="QLineEdit" name="cache_folder">
     <property name="geometry">
      <rect>
-      <x>10</x>
+      <x>90</x>
       <y>50</y>
       <width>161</width>
       <height>24</height>
@@ -125,13 +109,62 @@
      <string>Drive letter</string>
     </property>
    </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>50</y>
+      <width>71</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Cache folder</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_2">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>20</y>
+      <width>71</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Server</string>
+    </property>
+   </widget>
+   <widget class="QListWidget" name="filesystem_list">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>130</y>
+      <width>781</width>
+      <height>411</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="refresh_button">
+    <property name="geometry">
+     <rect>
+      <x>700</x>
+      <y>100</y>
+      <width>80</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Refresh</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>460</width>
+     <width>800</width>
      <height>21</height>
     </rect>
    </property>

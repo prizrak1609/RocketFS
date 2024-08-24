@@ -3,6 +3,8 @@
 #include "ICommand.h"
 #include <QObject>
 
+using namespace WebSocket::Command;
+
 class StatFSCmd : public QObject, public ICommand
 {
     Q_OBJECT

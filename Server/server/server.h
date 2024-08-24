@@ -5,6 +5,7 @@
 #include <QWebSocket>
 #include <QMutex>
 #include <QFile>
+#include <qfileinfo.h>
 
 class Server : public QObject
 {
@@ -34,7 +35,7 @@ private:
     void write_file(QString path, QString buf, int64_t size, int64_t off);
     void close_file(QString path);
     
-    void stat_to_json(struct stat* file_stat, QJsonObject& result, bool is_dir);
+    QJsonObject stat_to_json(const QFileInfo& info);
     void stat_fs(QString path);
 };
 

@@ -3,6 +3,8 @@
 #include "ICommand.h"
 #include <QObject>
 
+using namespace WebSocket::Command;
+
 class MkDirCmd : public QObject, public ICommand
 {
     Q_OBJECT

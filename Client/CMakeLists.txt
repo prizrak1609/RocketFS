@@ -18,17 +18,6 @@ set(PROJECT_SOURCES
         mainwindow.h
         mainwindow.ui
 
-        filesystem/filesystem.h
-        filesystem/filesystem.cpp
-        filesystem/filesystem_operations.cpp
-        filesystem/filesystemimpl.h
-
-        connection/connection.h
-        connection/connection.cpp
-        connection/connection_pool.h
-        connection/connection_pool.cpp
-
-        command/ICommand.h
         command/getattrcmd.h
         command/getattrcmd.cpp
         command/readdircmd.h
@@ -51,8 +40,6 @@ set(PROJECT_SOURCES
         command/writefilecmd.cpp
         command/closefilecmd.h
         command/closefilecmd.cpp
-        command/statfscmd.h
-        command/statfscmd.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -79,9 +66,12 @@ else()
     endif()
 endif()
 
-target_link_libraries(Client PRIVATE  Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::WebSockets "C:\\Program Files (x86)\\WinFsp\\lib\\winfsp-x64.lib")
+add_dependencies(Client WebSocketConnectionLib ClientSharedLib)
 
-target_include_directories(Client PRIVATE "C:\\Program Files (x86)\\WinFsp\\inc" "filesystem" "connection" "command")
+target_link_libraries(Client PRIVATE  Qt${QT_VERSION_MAJOR}::Widgets WebSocketConnectionLib)
+get_target_property(WebSocket_INCLUDES WebSocketConnectionLib INCLUDE_DIRECTORIES)
+
+target_include_directories(Client PRIVATE "${WebSocketConnectionLib_INCLUDES}" "filesystem" "command")
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
