@@ -123,14 +123,10 @@ void Server::get_attr(QString path)
     QFileInfo file(path);
     if (file.exists())
     {
-        struct stat* file_stat = new struct stat();
-        stat(path.toStdString().c_str(), file_stat);
-        QJsonObject response;
-        stat_to_json(file_stat, response, file.isDir());
+        QJsonObject response = stat_to_json(file);
 
         qDebug() << "get_attr: " << path << "\nresponse: " << QJsonDocument(response).toJson(QJsonDocument::Compact);
         qobject_cast<QWebSocket *>(sender())->sendTextMessage(QString(QJsonDocument(response).toJson(QJsonDocument::Compact)));
-        delete file_stat;
         return;
     }
     qDebug() << "get_attr: not found";
