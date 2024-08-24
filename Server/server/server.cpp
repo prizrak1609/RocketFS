@@ -139,6 +139,10 @@ void Server::read_dir(QString path)
     QDir dir(path);
     for(const QString& item : dir.entryList())
     {
+        if (item == ".") {
+            continue;
+        }
+
         QString item_full_path = path + dir.separator() + item;
 
         QFileInfo file(item_full_path);
