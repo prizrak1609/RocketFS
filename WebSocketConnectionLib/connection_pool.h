@@ -13,11 +13,10 @@ namespace WebSocket {
     {
         Q_OBJECT
     public:
-        using ptr = std::unique_ptr<Connection_pool>;
         ~Connection_pool();
 
-        static ptr& init(QObject *parent, QString url);
-        static ptr& get_instance();
+        static Connection_pool* init(QObject *parent, QString url);
+        static Connection_pool* get_instance();
 
         QFuture<QString> send_text(Command::ICommand& command);
         QFuture<QByteArray> send_binary(Command::ICommand& command);
@@ -30,7 +29,7 @@ namespace WebSocket {
         void on_error(QAbstractSocket::SocketError);
 
     private:
-        static ptr _instance;
+        static Connection_pool* _instance;
         QList<Connection*> _idle;
         QList<Connection*> _busy;
         QString _url;

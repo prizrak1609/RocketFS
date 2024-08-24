@@ -27,6 +27,8 @@ namespace WebSocket {
 
     public slots:
         void send(QString command);
+
+    private slots:
         void on_connected();
         void on_text_message(QString message);
         void on_binary_message(QByteArray message);

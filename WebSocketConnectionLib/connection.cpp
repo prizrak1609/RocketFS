@@ -11,7 +11,8 @@ Connection::Connection(QObject *parent, QString url) : QObject{parent}, _idle{fa
     connect(&_socket, &QWebSocket::errorOccurred, this, &Connection::error);
     connect(&_socket, &QWebSocket::stateChanged, this, &Connection::state_changed);
     _url.setScheme("ws");
-    _socket.open(url);
+    qDebug() << this << " connection opens " << _url;
+    _socket.open(_url);
 }
 
 Connection::~Connection()

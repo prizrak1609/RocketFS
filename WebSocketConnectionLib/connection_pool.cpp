@@ -6,14 +6,13 @@
 using namespace WebSocket;
 using namespace WebSocket::Command;
 
-constexpr int kWaitTimeSec = 1;
+constexpr int kWaitTimeSec = 500;
 
-Connection_pool::ptr Connection_pool::_instance = {};
+Connection_pool* Connection_pool::_instance = nullptr;
 
 Connection_pool::Connection_pool(QObject *parent, QString url) : QObject{parent}, _url(url)
 {
     int count  = QThread::idealThreadCount();
-    // count = 2; // TODO: remove this line after implementing multithreading
     for(int i = 0; i < count; i++)
     {
         Connection* conn = new Connection(this, url);
@@ -24,26 +23,18 @@ Connection_pool::Connection_pool(QObject *parent, QString url) : QObject{parent}
 
 Connection_pool::~Connection_pool()
 {
-    for(Connection* conn : _idle)
-    {
-        delete conn;
-    }
-    for(Connection* conn : _busy)
-    {
-        delete conn;
-    }
+    qDeleteAll(_idle);
+    qDeleteAll(_busy);
 }
 
-Connection_pool::ptr& Connection_pool::init(QObject *parent, QString url)
+Connection_pool* Connection_pool::init(QObject *parent, QString url)
 {
-    static std::once_flag flag;
-    std::call_once(flag, [=](){
-        _instance.reset(new Connection_pool(parent, url));
-    });
+    delete _instance;
+    _instance = new Connection_pool(parent, url);
     return _instance;
 }
 
-Connection_pool::ptr& Connection_pool::get_instance()
+Connection_pool* Connection_pool::get_instance()
 {
     return _instance;
 }
@@ -66,7 +57,7 @@ Connection* Connection_pool::get_connection()
             }
         }
         QThread::yieldCurrentThread();
-        QThread::sleep(kWaitTimeSec);
+        QThread::msleep(kWaitTimeSec);
     }
 
     prepare_lists:

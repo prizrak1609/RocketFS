@@ -1,5 +1,5 @@
 #include "rmfilecmd.h"
-#include <QJsonDocument>S
+#include <QJsonDocument>
 
 RmFileCmd::RmFileCmd(QString path_, QObject *parent) : QObject(parent), path(path_)
 {

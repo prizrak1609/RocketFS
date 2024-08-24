@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 #include <QAbstractSocket>
+#include <QListWidgetItem>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -17,7 +18,8 @@ public:
 
 public slots:
     void connect();
-    void refresh();
+    void read_folder();
+    void open_item(QListWidgetItem *item);
     void text_error(QString);
 
 private:
