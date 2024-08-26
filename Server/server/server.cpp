@@ -31,7 +31,7 @@ Server::~Server()
 void Server::new_connection()
 {
     QWebSocket* socket = web_socket_server->nextPendingConnection();
-    qDebug() << "new connection " << socket;
+    qDebug() << "new connection " << socket << " port " << socket->localPort();
     QObject::connect(socket, &QWebSocket::textMessageReceived, this, &Server::handle_text_message);
     QObject::connect(socket, &QWebSocket::disconnected, this, &Server::disconnected);
 }
