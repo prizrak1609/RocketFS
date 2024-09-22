@@ -17,9 +17,12 @@ add_library(WebSocketConnectionLib STATIC
   connection.cpp
   connection_pool.h
   connection_pool.cpp
-  ICommand.h
+  nonnull.h
 )
 
-target_link_libraries(WebSocketConnectionLib PUBLIC Qt6::Core Qt6::WebSockets)
+add_dependencies(WebSocketConnectionLib CommandsLib)
 
+target_include_directories(WebSocketConnectionLib PRIVATE "${CommandsLib_INCLUDES}")
+
+target_link_libraries(WebSocketConnectionLib PUBLIC CommandsLib Qt6::Core Qt6::WebSockets)
 target_compile_definitions(WebSocketConnectionLib PRIVATE WEBSOCKETCONNECTIONLIB_LIBRARY)

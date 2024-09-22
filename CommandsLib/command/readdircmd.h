@@ -3,7 +3,7 @@
 #include "ICommand.h"
 #include <QObject>
 
-class ReadDirCmd : public QObject, public WebSocket::Command::ICommand
+class ReadDirCmd : public QObject, public Command::ICommand
 {
     Q_OBJECT
 public:

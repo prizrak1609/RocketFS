@@ -3,13 +3,11 @@
 #include "ICommand.h"
 #include <QObject>
 
-using namespace WebSocket::Command;
-
-class CloseFileCmd : public QObject, public ICommand
+class GetAttrCmd : public QObject, public Command::ICommand
 {
     Q_OBJECT
 public:
-    explicit CloseFileCmd(QString path_, QObject *parent = nullptr);
+    explicit GetAttrCmd(QString path_, QObject *parent = nullptr);
 
     // ICommand interface
 public:

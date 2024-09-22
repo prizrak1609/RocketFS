@@ -16,7 +16,7 @@ Server::Server(QObject *parent) : QObject{parent}, web_socket_server(new QWebSoc
 {
     if(web_socket_server->listen(QHostAddress::Any, 8091))
     {
-        qDebug() << "listening on " << web_socket_server->serverUrl() << " port";
+        qDebug() << "listening on " << web_socket_server->serverUrl();
         QObject::connect(web_socket_server, &QWebSocketServer::newConnection, this, &Server::new_connection);
     }
 }

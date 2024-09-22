@@ -3,9 +3,7 @@
 #include "ICommand.h"
 #include <QObject>
 
-using namespace WebSocket::Command;
-
-class CreateFileCmd : public QObject, public ICommand
+class CreateFileCmd : public QObject, public Command::ICommand
 {
     Q_OBJECT
 public:

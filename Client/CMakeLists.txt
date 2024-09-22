@@ -21,29 +21,6 @@ set(PROJECT_SOURCES
 
         filesystemdatasource.h
         filesystemdatasource.cpp
-
-        command/getattrcmd.h
-        command/getattrcmd.cpp
-        command/readdircmd.h
-        command/readdircmd.cpp
-        command/rmdircmd.h
-        command/rmdircmd.cpp
-        command/mkdircmd.h
-        command/mkdircmd.cpp
-        command/renamecmd.h
-        command/renamecmd.cpp
-        command/createfilecmd.h
-        command/createfilecmd.cpp
-        command/rmfilecmd.h
-        command/rmfilecmd.cpp
-        command/openfilecmd.h
-        command/openfilecmd.cpp
-        command/readfilecmd.h
-        command/readfilecmd.cpp
-        command/writefilecmd.h
-        command/writefilecmd.cpp
-        command/closefilecmd.h
-        command/closefilecmd.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -69,7 +46,7 @@ else()
     endif()
 endif()
 
-add_dependencies(Client WebSocketConnectionLib)
+add_dependencies(Client WebSocketConnectionLib CommandsLib)
 
 target_link_directories(Client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(Client
@@ -81,6 +58,7 @@ target_link_libraries(Client
     Qt6::Quick
     Qt6::QuickControls2
 
+    CommandsLib
     WebSocketConnectionLib
 )
 
@@ -96,7 +74,7 @@ qt_add_qml_module(Client
         "FileSystem.qml"
 )
 
-target_include_directories(Client PRIVATE "${WebSocketConnectionLib_INCLUDES}" "command")
+target_include_directories(Client PRIVATE "${CommandsLib_INCLUDES}" "${WebSocketConnectionLib_INCLUDES}")
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

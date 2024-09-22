@@ -36,9 +36,12 @@ void Connection::send(QString command)
 
     _last_command = command;
 
-    // qDebug() << this << "sending command" << command;
-
     _socket.sendTextMessage(command);
+}
+
+void Connection::send(const NonNull<Command::ICommand*> command)
+{
+    send(command->to_json());
 }
 
 void Connection::on_error(QAbstractSocket::SocketError error_)

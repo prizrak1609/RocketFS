@@ -7,6 +7,8 @@
 #include <QThread>
 #include <QMutex>
 #include <QMutexLocker>
+#include "ICommand.h"
+#include "nonnull.h"
 
 namespace WebSocket {
 
@@ -27,6 +29,7 @@ namespace WebSocket {
 
     public slots:
         void send(QString command);
+        void send(const NonNull<Command::ICommand*> command);
 
     private slots:
         void on_connected();
