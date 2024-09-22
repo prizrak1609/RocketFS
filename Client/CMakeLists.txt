@@ -23,28 +23,9 @@ set(PROJECT_SOURCES
         filesystemdatasource.cpp
 )
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(Client
-            MANUAL_FINALIZATION
-            ${PROJECT_SOURCES}
-        )
+qt_add_executable(Client MANUAL_FINALIZATION ${PROJECT_SOURCES})
 # Define target properties for Android with Qt 6 as:
-#    set_property(TARGET Client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
-else()
-    if(ANDROID)
-        add_library(Client SHARED
-            ${PROJECT_SOURCES}
-        )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
-    else()
-        add_executable(Client
-            ${PROJECT_SOURCES}
-        )
-    endif()
-endif()
+set_property(TARGET Client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android)
 
 add_dependencies(Client WebSocketConnectionLib CommandsLib)
 
@@ -107,6 +88,4 @@ qt_generate_deploy_qml_app_script(
 )
 install(SCRIPT ${deploy_script})
 
-if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(Client)
-endif()
+qt_finalize_executable(Client)
