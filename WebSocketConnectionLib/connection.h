@@ -29,7 +29,7 @@ namespace WebSocket {
 
     public slots:
         void send(QString command);
-        void send(const NonNull<Command::ICommand*> command);
+        void send(Command::ICommand& command);
 
     private slots:
         void on_connected();

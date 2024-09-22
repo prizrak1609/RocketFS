@@ -4,7 +4,6 @@
 #include <QMetaEnum>
 
 using namespace WebSocket;
-using namespace WebSocket::Command;
 
 constexpr int kWaitTimeSec = 500;
 
@@ -71,15 +70,15 @@ Connection* Connection_pool::get_connection()
     return res;
 }
 
-QFuture<QString> Connection_pool::send_text(ICommand &command)
+QFuture<QString> Connection_pool::send_text(Command::ICommand &command)
 {
     Connection* conn = get_connection();
 
-    connect(this, &Connection_pool::request, conn, &Connection::send, Qt::SingleShotConnection);
+    QObject::connect(this, SIGNAL(request), conn, SLOT(send), Qt::SingleShotConnection);
 
     QFuture<QString> result = QtFuture::connect(conn, &Connection::response_string);
 
-    emit request(command.to_json());
+    emit request(command);
 
     return result.then(QtFuture::Launch::Sync, [this, conn](QString message) -> QString {
         QMutexLocker<QMutex> lock(&_send_mutex);
@@ -89,15 +88,15 @@ QFuture<QString> Connection_pool::send_text(ICommand &command)
     });
 }
 
-QFuture<QByteArray> Connection_pool::send_binary(ICommand &command)
+QFuture<QByteArray> Connection_pool::send_binary(Command::ICommand &command)
 {
     Connection* conn = get_connection();
 
-    connect(this, &Connection_pool::request, conn, &Connection::send, Qt::SingleShotConnection);
+    QObject::connect(this, SIGNAL(request), conn, SLOT(send), Qt::SingleShotConnection);
 
     QFuture<QByteArray> result = QtFuture::connect(conn, &Connection::response_bytes);
 
-    emit request(command.to_json());
+    emit request(command);
 
     return result.then(QtFuture::Launch::Sync, [this, conn](QByteArray message) -> QByteArray {
         QMutexLocker<QMutex> lock(&_send_mutex);

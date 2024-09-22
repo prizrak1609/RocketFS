@@ -1,7 +1,7 @@
 #include "server.h"
 #include <QDebug>
 #include "connection_pool.h"
-#include "readdircmd.h"
+#include "command/readdircmd.h"
 
 using namespace WebSocket;
 
