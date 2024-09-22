@@ -10,8 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(WebSocketConnectionLib_INCLUDES ${CMAKE_CURRENT_LIST_DIR} CACHE FILEPATH "")
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core WebSockets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core WebSockets)
+find_package(Qt6 REQUIRED COMPONENTS Core WebSockets)
 
 add_library(WebSocketConnectionLib STATIC
   connection.h
@@ -21,6 +20,6 @@ add_library(WebSocketConnectionLib STATIC
   ICommand.h
 )
 
-target_link_libraries(WebSocketConnectionLib PUBLIC Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::WebSockets)
+target_link_libraries(WebSocketConnectionLib PUBLIC Qt6::Core Qt6::WebSockets)
 
 target_compile_definitions(WebSocketConnectionLib PRIVATE WEBSOCKETCONNECTIONLIB_LIBRARY)
