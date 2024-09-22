@@ -71,6 +71,7 @@ endif()
 
 add_dependencies(Client WebSocketConnectionLib ClientSharedLib)
 
+target_link_directories(Client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(Client
     PRIVATE
 
