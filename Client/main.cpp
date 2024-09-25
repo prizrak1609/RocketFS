@@ -4,10 +4,15 @@
 #include <QQmlContext>
 #include "filesystemdatasource.h"
 #include "server.h"
+#include "filesystem.h"
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+
+    Filesystem filesystem;
+    QThread* thread = QThread::create(&Filesystem::run, &filesystem);
+    thread->start();
 
     // QQuickStyle::setStyle("Fusion");
 
