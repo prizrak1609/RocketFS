@@ -21,6 +21,9 @@ set(PROJECT_SOURCES
 
         filesystemdatasource.h
         filesystemdatasource.cpp
+
+        filesystem.h
+        filesystem.cpp
 )
 
 qt_add_executable(Client MANUAL_FINALIZATION ${PROJECT_SOURCES})
@@ -29,7 +32,7 @@ set_property(TARGET Client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE
 
 add_dependencies(Client WebSocketConnectionLib CommandsLib)
 
-target_link_directories(Client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_directories(Client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} "C:/Program Files (x86)/WinFsp/lib")
 target_link_libraries(Client
     PRIVATE
 
@@ -41,6 +44,8 @@ target_link_libraries(Client
 
     CommandsLib
     WebSocketConnectionLib
+
+    winfsp-x64
 )
 
 qt_add_qml_module(Client
@@ -55,14 +60,7 @@ qt_add_qml_module(Client
         "FileSystem.qml"
 )
 
-target_include_directories(Client PRIVATE "${CommandsLib_INCLUDES}" "${WebSocketConnectionLib_INCLUDES}")
-
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
-if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.azzulis.Client)
-endif()
+target_include_directories(Client PRIVATE "${CommandsLib_INCLUDES}" "${WebSocketConnectionLib_INCLUDES}" "C:/Program Files (x86)/WinFsp/inc")
 
 set_target_properties(Client PROPERTIES
     ${BUNDLE_ID_OPTION}
