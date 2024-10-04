@@ -22,7 +22,7 @@ add_library(WebSocketConnectionLib STATIC
 
 add_dependencies(WebSocketConnectionLib CommandsLib)
 
-target_include_directories(WebSocketConnectionLib PRIVATE "${CommandsLib_INCLUDES}")
+target_include_directories(WebSocketConnectionLib PRIVATE "${WebSocketConnectionLib_INCLUDES}" "${CommandsLib_INCLUDES}")
 
 target_link_libraries(WebSocketConnectionLib PUBLIC CommandsLib Qt6::Core Qt6::WebSockets)
 target_compile_definitions(WebSocketConnectionLib PRIVATE WEBSOCKETCONNECTIONLIB_LIBRARY)

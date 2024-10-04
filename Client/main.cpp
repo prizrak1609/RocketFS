@@ -4,15 +4,14 @@
 #include <QQmlContext>
 #include "filesystemdatasource.h"
 #include "server.h"
-#include "filesystem.h"
+#include "filesystem/filesystem.h"
+#include "connection_pool.h"
+
+using namespace WebSocket;
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-
-    Filesystem filesystem;
-    QThread* thread = QThread::create(&Filesystem::run, &filesystem);
-    thread->start();
 
     // QQuickStyle::setStyle("Fusion");
 
@@ -26,5 +25,16 @@ int main(int argc, char *argv[])
 
     // engine.loadFromModule("qml.module", "MainWindow");
 
-    return app.exec();
+    Connection_pool* pool = Connection_pool::init(nullptr, "192.168.0.14:8091");
+
+    Filesystem::get_instance()->cache_folder = "F:/Server";
+    Filesystem::get_instance()->mount_path = "Y:";
+    Filesystem::get_instance()->start();
+
+    auto res = app.exec();
+
+    Filesystem::get_instance()->terminate();
+    pool->deleteLater();
+
+    return res;
 }

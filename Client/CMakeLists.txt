@@ -22,8 +22,10 @@ set(PROJECT_SOURCES
         filesystemdatasource.h
         filesystemdatasource.cpp
 
-        filesystem.h
-        filesystem.cpp
+        filesystem/filesystem.h
+        filesystem/filesystem.cpp
+        filesystem/filesystem_operations.cpp
+        filesystem/filesystemimpl.h
 )
 
 qt_add_executable(Client MANUAL_FINALIZATION ${PROJECT_SOURCES})
