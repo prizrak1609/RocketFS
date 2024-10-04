@@ -46,17 +46,6 @@ add_library(CommandsLib STATIC
   ${HEADERS}
 )
 
-SET_TARGET_PROPERTIES(
-  CommandsLib
-PROPERTIES
-  FRAMEWORK ON
-  SOVERSION 0
-  VERSION 0.1.0
-  PUBLIC_HEADER "${HEADERS}"
-  ARCHIVE_OUTPUT_DIRECTORY "lib"
-  LIBRARY_OUTPUT_DIRECTORY "lib"
-  OUTPUT_NAME CommandsLib
-)
 
 target_include_directories(CommandsLib PRIVATE "${CommandsLib_INCLUDES}")
 
