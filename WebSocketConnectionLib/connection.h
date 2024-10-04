@@ -8,7 +8,6 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include "ICommand.h"
-#include "nonnull.h"
 
 namespace WebSocket {
 
