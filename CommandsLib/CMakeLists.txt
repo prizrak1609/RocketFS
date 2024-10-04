@@ -12,34 +12,50 @@ set(CommandsLib_INCLUDES ${CMAKE_CURRENT_LIST_DIR} CACHE FILEPATH "")
 
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
+set(HEADERS command/getattrcmd.h
+    command/readdircmd.h
+    command/rmdircmd.h
+    command/mkdircmd.h
+    command/renamecmd.h
+    command/createfilecmd.h
+    command/rmfilecmd.h
+    command/openfilecmd.h
+    command/readfilecmd.h
+    command/writefilecmd.h
+    command/closefilecmd.h
+    command/statfscmd.h
+    )
+
 add_library(CommandsLib STATIC
   ICommand.h
   icommand.cpp
 
-  command/getattrcmd.h
   command/getattrcmd.cpp
-  command/readdircmd.h
   command/readdircmd.cpp
-  command/rmdircmd.h
   command/rmdircmd.cpp
-  command/mkdircmd.h
   command/mkdircmd.cpp
-  command/renamecmd.h
   command/renamecmd.cpp
-  command/createfilecmd.h
   command/createfilecmd.cpp
-  command/rmfilecmd.h
   command/rmfilecmd.cpp
-  command/openfilecmd.h
   command/openfilecmd.cpp
-  command/readfilecmd.h
   command/readfilecmd.cpp
-  command/writefilecmd.h
   command/writefilecmd.cpp
-  command/closefilecmd.h
   command/closefilecmd.cpp
-  command/statfscmd.h
   command/statfscmd.cpp
+
+  ${HEADERS}
+)
+
+SET_TARGET_PROPERTIES(
+  CommandsLib
+PROPERTIES
+  FRAMEWORK ON
+  SOVERSION 0
+  VERSION 0.1.0
+  PUBLIC_HEADER "${HEADERS}"
+  ARCHIVE_OUTPUT_DIRECTORY "lib"
+  LIBRARY_OUTPUT_DIRECTORY "lib"
+  OUTPUT_NAME CommandsLib
 )
 
 target_include_directories(CommandsLib PRIVATE "${CommandsLib_INCLUDES}")
