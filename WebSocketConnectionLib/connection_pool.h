@@ -22,7 +22,7 @@ namespace WebSocket {
         QFuture<QByteArray> send_binary(Command::ICommand& command);
 
     signals:
-        void request(Command::ICommand& command);
+        void request(QString command);
         void error(QString error);
 
     public slots:

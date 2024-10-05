@@ -267,7 +267,7 @@ void Server::stat_fs(QString path)
     body["blocks_free_count"] = storage.bytesFree() / storage.blockSize();
     body["blocks_available_count"] = storage.bytesAvailable() / storage.blockSize();
 
-    qDebug() << "stat_fs: response";
+    qDebug() << "stat_fs: " << qobject_cast<QWebSocket *>(sender()) << " response " << QJsonDocument(body).toJson(QJsonDocument::Compact);
     qobject_cast<QWebSocket *>(sender())->sendTextMessage(QJsonDocument(body).toJson(QJsonDocument::Compact));
 }
 

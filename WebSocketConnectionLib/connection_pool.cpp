@@ -74,11 +74,11 @@ QFuture<QString> Connection_pool::send_text(Command::ICommand &command)
 {
     Connection* conn = get_connection();
 
-    QObject::connect(this, SIGNAL(request), conn, SLOT(send), Qt::SingleShotConnection);
+    QObject::connect(this, &Connection_pool::request, conn, &Connection::send, Qt::SingleShotConnection);
 
     QFuture<QString> result = QtFuture::connect(conn, &Connection::response_string);
 
-    emit request(command);
+    emit request(command.to_json());
 
     return result.then(QtFuture::Launch::Sync, [this, conn](QString message) -> QString {
         QMutexLocker<QMutex> lock(&_send_mutex);
@@ -92,11 +92,11 @@ QFuture<QByteArray> Connection_pool::send_binary(Command::ICommand &command)
 {
     Connection* conn = get_connection();
 
-    QObject::connect(this, SIGNAL(request), conn, SLOT(send), Qt::SingleShotConnection);
+    QObject::connect(this, &Connection_pool::request, conn, &Connection::send, Qt::SingleShotConnection);
 
     QFuture<QByteArray> result = QtFuture::connect(conn, &Connection::response_bytes);
 
-    emit request(command);
+    emit request(command.to_json());
 
     return result.then(QtFuture::Launch::Sync, [this, conn](QByteArray message) -> QByteArray {
         QMutexLocker<QMutex> lock(&_send_mutex);
