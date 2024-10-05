@@ -6,6 +6,7 @@
 #include <QMutex>
 #include <QFile>
 #include <qfileinfo.h>
+#include <atomic>
 
 class Server : public QObject
 {
@@ -20,22 +21,23 @@ public slots:
     void disconnected();
 
 private:
+    std::atomic_uint64_t counter = 0;
     QWebSocketServer* web_socket_server;
     QList<QWebSocket*> clients;
     
-    void get_attr(QString path);
-    void read_dir(QString path);
-    void mk_dir(QString path);
-    void rm_dir(QString path);
-    void rename(QString from, QString to);
-    void create_file(QString path);
-    void rm_file(QString path);
-    void open_file(QString path);
-    void read_file(QString path, int64_t size, int64_t off);
-    void write_file(QString path, QString buf, int64_t size, int64_t off);
-    void close_file(QString path);
+    QString get_attr(QString path);
+    QString read_dir(QString path);
+    QString mk_dir(QString path);
+    QString rm_dir(QString path);
+    QString rename(QString from, QString to);
+    QString create_file(QString path);
+    QString rm_file(QString path);
+    QString open_file(QString path);
+    QString read_file(QString path, int64_t size, int64_t off);
+    QString write_file(QString path, QString buf, int64_t size, int64_t off);
+    QString close_file(QString path);
     
     QJsonObject stat_to_json(const QFileInfo& info);
-    void stat_fs(QString path);
+    QString stat_fs(QString path);
 };
 

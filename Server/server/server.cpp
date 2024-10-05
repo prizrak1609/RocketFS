@@ -38,57 +38,61 @@ void Server::new_connection()
 
 void Server::handle_text_message(QString message)
 {
-    qDebug() << "received: " << message;
+    uint64_t messageNumber = counter.fetch_add(1);
+    qDebug() << messageNumber << ": " << qobject_cast<QWebSocket *>(sender()) << "received: " << message;
     QJsonObject obj = QJsonDocument::fromJson(message.toUtf8()).object();
     QString command = obj["command"].toString();
+    QString result = "";
     if(command == "get_attr")
     {
         QString path = obj["path"].toString();
         qDebug() << "get_attr: " << path;
-        get_attr(path);
+        result = get_attr(path);
     } else if(command == "read_dir")
     {
         QString path = obj["path"].toString();
         qDebug() << "read_dir: " << path;
-        read_dir(path);
+        result = read_dir(path);
     } else if(command == "mk_dir")
     {
         QString path = obj["path"].toString();
         qDebug() << "mk_dir: " << path;
-        mk_dir(path);
+        result = mk_dir(path);
     } else if(command == "rm_dir")
     {
         QString path = obj["path"].toString();
         qDebug() << "rm_dir: " << path;
-        rm_dir(path);
+        result = rm_dir(path);
     } else if(command == "rename")
     {
         QString from = obj["from"].toString();
         QString to = obj["to"].toString();
         qDebug() << "rename: from " << from << " to " << to;
-        rename(from, to);
+        result = rename(from, to);
     } else if(command == "create_file")
     {
         QString path = obj["path"].toString();
         qDebug() << "create_file: " << path;
-        create_file(path);
+        result = create_file(path);
     } else if(command == "rm_file")
     {
         QString path = obj["path"].toString();
         qDebug() << "rm_file: " << path;
-        rm_file(path);
+        result = rm_file(path);
     } else if(command == "open_file")
     {
         QString path = obj["path"].toString();
         qDebug() << "open_file: " << path;
-        open_file(path);
+        result = open_file(path);
     } else if(command == "read_file")
     {
         QString path = obj["path"].toString();
         int64_t size = obj["size"].toInteger();
         int64_t off = obj["offset"].toInteger();
         qDebug() << "read_file: " << path <<" size " << size << " offset " << off;
-        read_file(path, size, off);
+        result = read_file(path, size, off);
+        // read file sends binary
+        return;
     } else if(command == "write_file")
     {
         QString path = obj["path"].toString();
@@ -96,18 +100,20 @@ void Server::handle_text_message(QString message)
         int64_t size = obj["size"].toInteger();
         int64_t off = obj["offset"].toInteger();
         qDebug() << "write_file: " << path <<" size " << size << " offset " << off;
-        write_file(path, buf, size, off);
+        result = write_file(path, buf, size, off);
     } else if(command == "close_file")
     {
         QString path = obj["path"].toString();
         qDebug() << "close_file: " << path;
-        close_file(path);
+        result = close_file(path);
     } else if(command == "stat_fs")
     {
         QString path = obj["path"].toString();
         qDebug() << "stat_fs: " << path;
-        stat_fs(path);
+        result = stat_fs(path);
     }
+    qDebug() << messageNumber << ": " << qobject_cast<QWebSocket *>(sender()) << " result: " << result;
+    qobject_cast<QWebSocket *>(sender())->sendTextMessage(result);
 }
 
 void Server::disconnected()
@@ -124,22 +130,19 @@ void Server::disconnected()
     qDebug() << "disconnected: " << client;
 }
 
-void Server::get_attr(QString path)
+QString Server::get_attr(QString path)
 {
     QFileInfo file(path);
     if (file.exists())
     {
         QJsonObject response = stat_to_json(file);
-
-        qDebug() << "get_attr: " << path << "\nresponse: " << QJsonDocument(response).toJson(QJsonDocument::Compact);
-        qobject_cast<QWebSocket *>(sender())->sendTextMessage(QString(QJsonDocument(response).toJson(QJsonDocument::Compact)));
-        return;
+        return QJsonDocument(response).toJson(QJsonDocument::Compact);
     }
     qDebug() << "get_attr: not found";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+    return "";
 }
 
-void Server::read_dir(QString path)
+QString Server::read_dir(QString path)
 {
     QJsonArray result;
     QDir dir(path);
@@ -161,26 +164,24 @@ void Server::read_dir(QString path)
     }
 
     qDebug() << "read_dir: response";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage(QString(QJsonDocument(result).toJson(QJsonDocument::Compact)));
+    return QJsonDocument(result).toJson(QJsonDocument::Compact);
 }
 
-void Server::mk_dir(QString path)
+QString Server::mk_dir(QString path)
 {
     QDir dir;
     dir.mkpath(path);
-    qDebug() << "mk_dir: response";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+    return "";
 }
 
-void Server::rm_dir(QString path)
+QString Server::rm_dir(QString path)
 {
     QDir dir(path);
     dir.removeRecursively();
-    qDebug() << "rm_dir: response";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+    return "";
 }
 
-void Server::rename(QString from, QString to)
+QString Server::rename(QString from, QString to)
 {
     QFileInfo info(from);
     if(info.isFile())
@@ -192,34 +193,31 @@ void Server::rename(QString from, QString to)
         QDir dir;
         dir.rename(from, to);
     }
-    qDebug() << "rename: response";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+    return "";
 }
 
-void Server::create_file(QString path)
+QString Server::create_file(QString path)
 {
     QFile file(path);
     file.open(QFile::OpenModeFlag::WriteOnly);
     file.close();
-    qDebug() << "create_file: response";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+    return "";
 }
 
-void Server::rm_file(QString path)
+QString Server::rm_file(QString path)
 {
     QFile file(path);
     file.remove();
-    qDebug() << "rm_file: response";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+    return "";
 }
 
-void Server::open_file(QString path)
+QString Server::open_file(QString path)
 {
     qDebug() << "open_file: unsupported";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+    return "";
 }
 
-void Server::read_file(QString path, int64_t size, int64_t off)
+QString Server::read_file(QString path, int64_t size, int64_t off)
 {
     QFile file(path);
     if (file.exists())
@@ -229,13 +227,14 @@ void Server::read_file(QString path, int64_t size, int64_t off)
         QByteArray buf = file.read(size);
         qDebug() << "read_file: response";
         qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(buf);
-        return;
+        return "";
     }
     qDebug() << "read_file: empty response";
     qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(QByteArray());
+    return "";
 }
 
-void Server::write_file(QString path, QString buf, int64_t size, int64_t off)
+QString Server::write_file(QString path, QString buf, int64_t size, int64_t off)
 {
     QFile file(path);
     if (file.exists())
@@ -245,17 +244,16 @@ void Server::write_file(QString path, QString buf, int64_t size, int64_t off)
         QString encoded = QByteArray::fromBase64(buf.toUtf8());
         file.write(encoded.toUtf8());
     }
-    qDebug() << "write_file: response";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+    return "";
 }
 
-void Server::close_file(QString path)
+QString Server::close_file(QString path)
 {
     qDebug() << "close_file: unsupported";
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage("");
+    return "";
 }
 
-void Server::stat_fs(QString path)
+QString Server::stat_fs(QString path)
 {
     QStorageInfo storage = QStorageInfo::root();
     storage.setPath(path);
@@ -267,8 +265,7 @@ void Server::stat_fs(QString path)
     body["blocks_free_count"] = storage.bytesFree() / storage.blockSize();
     body["blocks_available_count"] = storage.bytesAvailable() / storage.blockSize();
 
-    qDebug() << "stat_fs: " << qobject_cast<QWebSocket *>(sender()) << " response " << QJsonDocument(body).toJson(QJsonDocument::Compact);
-    qobject_cast<QWebSocket *>(sender())->sendTextMessage(QJsonDocument(body).toJson(QJsonDocument::Compact));
+    return QJsonDocument(body).toJson(QJsonDocument::Compact);
 }
 
 QJsonObject Server::stat_to_json(const QFileInfo& info)
