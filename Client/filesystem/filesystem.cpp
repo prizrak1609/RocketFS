@@ -49,7 +49,8 @@ Filesystem::ptr& Filesystem::get_instance()
 
 void* Filesystem::init(fuse3_conn_info *conn, fuse3_config *conf)
 {
-    conn->capable |= FUSE_CAP_CASE_INSENSITIVE | FUSE_READDIR_PLUS | FUSE_CAP_ASYNC_DIO | FUSE_CAP_ASYNC_READ;
+    conn->capable |= FUSE_CAP_CASE_INSENSITIVE | FUSE_READDIR_PLUS | FUSE_CAP_ASYNC_DIO;
+    // FUSE_CAP_ASYNC_READ
 
     cache.setPath(cache_folder);
     cache.mkpath(cache_folder);
