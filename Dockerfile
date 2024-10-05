@@ -32,6 +32,6 @@ RUN cmake .. -DQt6WebSockets_DIR:PATH="/qt/installed/6.5.2/gcc_64/lib/cmake/Qt6W
     -DQt6_DIR:PATH="/qt/installed/6.5.2/gcc_64/lib/cmake/Qt6"
 RUN cmake --build . --target Server
 
-RUN chmod 755 Server
+RUN chmod 755 Server/Server
 
-ENTRYPOINT ["/qt/app/build/Server"]
+ENTRYPOINT ["/qt/app/build/Server/Server"]
