@@ -225,7 +225,7 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
         file.open(QFile::ReadOnly);
         file.seek(off);
         QByteArray buf = file.read(size);
-        qDebug() << "read_file: response";
+        qDebug() << "read_file: response " << buf.toBase64();
         qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(buf);
         return "";
     }
