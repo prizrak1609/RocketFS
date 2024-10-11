@@ -62,25 +62,22 @@ void Connection::on_connected()
     _idle.exchange(true);
 }
 
-void Connection::on_text_message(QString message)
+void Connection::on_text_message(const QString &message)
 {
-    QString debug = message;
-    if(debug.length() > 100)
-    {
-        debug.truncate(100);
-    }
-    // qDebug() << this << "response:" << debug;
+    qDebug() << this << "response: " << message.size();
 
-    emit response_string(message);
+    QString _message = message;
+    emit response_string(_message);
 
     _idle.exchange(true);
 }
 
-void Connection::on_binary_message(QByteArray message)
+void Connection::on_binary_message(const QByteArray &message)
 {
-    // qDebug() << this << "response:" << message.size();
+    qDebug() << this << "response: " << message.size();
 
-    emit response_bytes(message);
+    QByteArray _message = message;
+    emit response_bytes(_message);
 
     _idle.exchange(true);
 }

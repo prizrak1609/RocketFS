@@ -75,7 +75,7 @@ ICommand* ICommand::fromJson(QObject* parent, QString json) {
         int64_t size = obj["size"].toInteger();
         int64_t off = obj["offset"].toInteger();
         qDebug() << "write_file: " << path <<" size " << size << " offset " << off;
-        return new WriteFileCmd(path, buf, size, off, parent);
+        return new WriteFileCmd(path, QByteArray::fromBase64(buf.toUtf8(), QByteArray::Base64UrlEncoding), size, off, parent);
     } else if(command == "close_file")
     {
         QString path = obj["path"].toString();

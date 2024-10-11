@@ -45,13 +45,14 @@ void Filesystem::run()
             nullptr, // int (*ioctl)(const char *path, int cmd, void *arg, struct fuse3_file_info *fi, unsigned int flags, void *data);
         };
 
-    constexpr int argc = 7;
+    constexpr int argc = 9;
     char debug[] = "-d";
     char foreground[] = "-f";
     char additional_param[] = "-o";
     char allow_other_value[] = "allow_other";
     char auto_mount[] = "auto_unmount";
+    char use_user_uid[] = "uid=-1";
     std::string mount = mount_path.toStdString();
-    char* argv[argc] = { debug, foreground, additional_param, allow_other_value, additional_param, auto_mount, (char*)mount.c_str() };
+    char* argv[argc] = { debug, foreground, additional_param, allow_other_value, additional_param, auto_mount, additional_param, use_user_uid, (char*)mount.c_str() };
     fuse_main(argc, argv, &operations, this);
 }

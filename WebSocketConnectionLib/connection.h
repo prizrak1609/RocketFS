@@ -30,8 +30,8 @@ namespace WebSocket {
 
     private slots:
         void on_connected();
-        void on_text_message(QString message);
-        void on_binary_message(QByteArray message);
+        void on_text_message(const QString &message);
+        void on_binary_message(const QByteArray &message);
         void on_error(QAbstractSocket::SocketError error_);
         void state_changed(QAbstractSocket::SocketState state);
 

@@ -251,6 +251,7 @@ int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t o
     Connection_pool::get_instance()->send_binary(command).then(QtFuture::Launch::Sync, [buf, size, &read_bytes](QByteArray message){
         if(message.isEmpty())
         {
+            qDebug() << "received empty byte array";
             read_bytes = -ENOENT;
             return;
         }
@@ -262,6 +263,7 @@ int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t o
         }
 
         memcpy_s(buf, size, message, read_bytes);
+        memcpy_s(buf, size, message.constData(), read_bytes);
     }).waitForFinished();
     return read_bytes;
 }
@@ -272,7 +274,9 @@ int Filesystem::write_file(const char *path, const char *buf, size_t size, fuse_
 
     QMutexLocker<QMutex> lock(mutex);
 
-    WriteFileCmd command(path, QByteArray(buf).toBase64(), size, off);
+    qDebug() << "write file " << path << " data size " << size;
+
+    WriteFileCmd command(path, QByteArray(buf), size, off);
     Connection_pool::get_instance()->send_text(command).waitForFinished();
     return 0;
 }
