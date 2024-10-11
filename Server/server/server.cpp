@@ -252,7 +252,7 @@ QString Server::write_file(QString path, QString buf, int64_t size, int64_t off)
         QDataStream stream(&file);
         stream.skipRawData(off);
 
-        stream.writeRawData(buf.toUtf8(), buf.size());
+        stream.writeRawData(QByteArray::fromBase64(buf.toUtf8(), QByteArray::Base64UrlEncoding), buf.size());
 
         file.flush();
     }
