@@ -222,7 +222,7 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
     QFile file(path);
     if (file.exists())
     {
-        file.open(QFile::ReadOnly);
+        bool res = file.open(QFile::ReadOnly);
 
         QDataStream stream(&file);
         stream.skipRawData(off);
@@ -230,7 +230,9 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
         QByteArray buf(size, '\0');
         stream.readRawData(buf.data(), size);
 
-        qDebug() << "read_file: response " << buf.toBase64();
+        qDebug() << "read_file: response " << buf;
+        qDebug() << "read_file: status " << stream.status();
+        qDebug() << "read_file: " << path << " is opened " << res;
         qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(buf);
         return "";
     }
