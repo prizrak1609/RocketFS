@@ -199,7 +199,8 @@ QString Server::rename(QString from, QString to)
 QString Server::create_file(QString path)
 {
     QFile file(path);
-    file.open(QFile::OpenModeFlag::WriteOnly);
+    file.open(QFile::WriteOnly);
+    file.flush();
     file.close();
     return "";
 }
@@ -222,7 +223,7 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
     QFile file(path);
     if (file.exists())
     {
-        bool res = file.open(QFile::ReadOnly);
+        bool res = file.open(QFile::ReadWrite);
 
         QDataStream stream(&file);
         stream.skipRawData(off);
@@ -246,12 +247,14 @@ QString Server::write_file(QString path, QString buf, int64_t size, int64_t off)
     QFile file(path);
     if (file.exists())
     {
-        file.open(QFile::WriteOnly);
+        file.open(QFile::ReadWrite);
 
         QDataStream stream(&file);
         stream.skipRawData(off);
 
         stream.writeRawData(buf.toUtf8(), buf.size());
+
+        file.flush();
     }
     return "";
 }
