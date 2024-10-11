@@ -223,8 +223,13 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
     if (file.exists())
     {
         file.open(QFile::ReadOnly);
-        file.seek(off);
-        QByteArray buf = file.read(size);
+
+        QDataStream stream(&file);
+        stream.skipRawData(off);
+
+        QByteArray buf(size, '\0');
+        stream.readRawData(buf.data(), size);
+
         qDebug() << "read_file: response " << buf.toBase64();
         qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(buf);
         return "";
@@ -240,9 +245,11 @@ QString Server::write_file(QString path, QString buf, int64_t size, int64_t off)
     if (file.exists())
     {
         file.open(QFile::WriteOnly);
-        file.seek(off);
-        QString encoded = QByteArray::fromBase64(buf.toUtf8());
-        file.write(encoded.toUtf8());
+
+        QDataStream stream(&file);
+        stream.skipRawData(off);
+
+        stream.writeRawData(buf.toUtf8(), buf.size());
     }
     return "";
 }
