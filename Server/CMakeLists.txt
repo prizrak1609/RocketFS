@@ -14,8 +14,11 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 add_executable(Server
   main.cpp
 
-  server/server.h
-  server/server.cpp
+  server.h
+  server.cpp
+
+  pathhelper.h
+  pathhelper.cpp
 )
 
 add_dependencies(Server WebSocketConnectionLib)

@@ -7,6 +7,7 @@
 #include <QFile>
 #include <qfileinfo.h>
 #include <atomic>
+#include "pathhelper.h"
 
 class Server : public QObject
 {
@@ -21,6 +22,7 @@ public slots:
     void disconnected();
 
 private:
+    PathHelper path_helper;
     std::atomic_uint64_t counter = 0;
     QWebSocketServer* web_socket_server;
     QList<QWebSocket*> clients;

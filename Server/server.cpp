@@ -3,6 +3,7 @@
 #include <QJsonObject>
 #include <QFile>
 #include <QDir>
+#include <QDirIterator>
 #include <QMutexLocker>
 #include <QJsonArray>
 #include <sys/stat.h>
@@ -133,7 +134,13 @@ void Server::disconnected()
 
 QString Server::get_attr(QString path)
 {
-    QFileInfo file(path);
+    QString originalPath = path_helper.findPath(path);
+    if (originalPath.isEmpty())
+    {
+        return "";
+    }
+
+    QFileInfo file(originalPath);
     if (file.exists())
     {
         QJsonObject response = stat_to_json(file);
@@ -145,10 +152,19 @@ QString Server::get_attr(QString path)
 
 QString Server::read_dir(QString path)
 {
-    QJsonArray result;
-    QDir dir(path);
-    for(const QString& item : dir.entryList())
+    QString originalPath = path_helper.findPath(path);
+    if (originalPath.isEmpty())
     {
+        return "";
+    }
+
+    QJsonArray result;
+    QDir dir(originalPath);
+    QDirIterator iter(dir);
+    while (iter.hasNext())
+    {
+        QString item = iter.next();
+
         if (item == ".") {
             continue;
         }
@@ -177,22 +193,38 @@ QString Server::mk_dir(QString path)
 
 QString Server::rm_dir(QString path)
 {
-    QDir dir(path);
+    path_helper.removePath(path);
+
+    QString originalPath = path_helper.findPath(path);
+    if (originalPath.isEmpty())
+    {
+        return "";
+    }
+
+    QDir dir(originalPath);
     dir.removeRecursively();
     return "";
 }
 
 QString Server::rename(QString from, QString to)
 {
-    QFileInfo info(from);
+    path_helper.removePath(from);
+
+    QString originalPath = path_helper.findPath(from);
+    if (originalPath.isEmpty())
+    {
+        return "";
+    }
+
+    QFileInfo info(originalPath);
     if(info.isFile())
     {
         QFile file;
-        file.rename(from, to);
+        file.rename(originalPath, to);
     } else
     {
         QDir dir;
-        dir.rename(from, to);
+        dir.rename(originalPath, to);
     }
     return "";
 }
@@ -208,8 +240,17 @@ QString Server::create_file(QString path)
 
 QString Server::rm_file(QString path)
 {
-    QFile file(path);
+    path_helper.removePath(path);
+
+    QString originalPath = path_helper.findPath(path);
+    if (originalPath.isEmpty())
+    {
+        return "";
+    }
+
+    QFile file(originalPath);
     file.remove();
+
     return "";
 }
 
@@ -221,7 +262,15 @@ QString Server::open_file(QString path)
 
 QString Server::read_file(QString path, int64_t size, int64_t off)
 {
-    QFile file(path);
+    QString originalPath = path_helper.findPath(path);
+    if (originalPath.isEmpty())
+    {
+        qDebug() << "read_file: not exist, empty response";
+        qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(QByteArray());
+        return "";
+    }
+
+    QFile file(originalPath);
     if (file.exists())
     {
         file.open(QFile::ReadWrite);
@@ -236,6 +285,7 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
         qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(buf);
         return "";
     }
+
     qDebug() << "read_file: empty response";
     qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(QByteArray());
     return "";
@@ -243,7 +293,13 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
 
 QString Server::write_file(QString path, QString buf, int64_t size, int64_t off)
 {
-    QFile file(path);
+    QString originalPath = path_helper.findPath(path);
+    if (originalPath.isEmpty())
+    {
+        return "";
+    }
+
+    QFile file(originalPath);
     if (file.exists())
     {
         file.open(QFile::ReadWrite);
@@ -266,6 +322,12 @@ QString Server::close_file(QString path)
 
 QString Server::stat_fs(QString path)
 {
+    QString originalPath = path_helper.findPath(path);
+    if (originalPath.isEmpty())
+    {
+        originalPath = QDir::rootPath();
+    }
+
     QStorageInfo storage = QStorageInfo::root();
     storage.setPath(path);
 
