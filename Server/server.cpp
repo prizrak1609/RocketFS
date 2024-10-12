@@ -268,15 +268,9 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
     }
 
     QFile file(originalPath);
-    if (file.exists())
+    if (file.exists() && file.open(QFile::ReadWrite) && file.seek(off))
     {
-        file.open(QFile::ReadWrite);
-
-        QDataStream stream(&file);
-        stream.skipRawData(off);
-
-        QByteArray buf(size, '\0');
-        stream.readRawData(buf.data(), size);
+        QByteArray buf = file.read(size);
 
         qDebug() << "read_file: response " << buf.size();
         qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(buf);
