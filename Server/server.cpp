@@ -345,39 +345,40 @@ QJsonObject Server::stat_to_json(const QFileInfo& info)
     if (info.isDir())
     {
         qDebug() << info.absoluteFilePath() << " is directory";
-        mode = S_IFDIR;
+        mode = S_IFDIR + 0777;
     } else
     {
         qDebug() << info.absoluteFilePath() << " is file";
         mode = S_IFREG;
-    }
-    if (info.isReadable())
-    {
-        qDebug() << info.absoluteFilePath() << " readable";
-        mode += 0444;
-    }
-    if (info.isWritable())
-    {
-        qDebug() << info.absoluteFilePath() << " writable";
-        mode += 0222;
-    }
 
-    bool is_executable = info.isExecutable();
-    if (!is_executable)
-    {
-        for (const QString& ext : kExecutableExtensions)
+        if (info.isReadable())
         {
-            if (info.fileName().endsWith(ext, Qt::CaseInsensitive))
+            qDebug() << info.absoluteFilePath() << " readable";
+            mode += 0444;
+        }
+        if (info.isWritable())
+        {
+            qDebug() << info.absoluteFilePath() << " writable";
+            mode += 0222;
+        }
+
+        bool is_executable = info.isExecutable();
+        if (!is_executable)
+        {
+            for (const QString& ext : kExecutableExtensions)
             {
-                is_executable = true;
-                break;
+                if (info.fileName().endsWith(ext, Qt::CaseInsensitive))
+                {
+                    is_executable = true;
+                    break;
+                }
             }
         }
-    }
-    if (is_executable)
-    {
-        qDebug() << info.path() << " executable";
-        mode += 0111;
+        if (is_executable)
+        {
+            qDebug() << info.path() << " executable";
+            mode += 0111;
+        }
     }
 
     result["st_mode"] = mode;
