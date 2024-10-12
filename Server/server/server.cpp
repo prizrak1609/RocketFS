@@ -290,7 +290,7 @@ QJsonObject Server::stat_to_json(const QFileInfo& info)
     int mode = 0;
     if (info.isDir())
     {
-        mode = S_IFDIR + 0777;
+        mode = S_IFDIR;
     } else
     {
         mode = S_IFREG;
