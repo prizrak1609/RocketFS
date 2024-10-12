@@ -83,7 +83,7 @@ QString PathHelper::getOriginalName(QDir dir, QString name, Qt::CaseSensitivity 
         }
 
         qDebug() << item << " compare " << name;
-        if (item.compare(name, sensitive))
+        if (item.compare(name, sensitive) == 0)
         {
             return item;
         }
