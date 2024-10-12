@@ -17,14 +17,17 @@ QStringList PathHelper::pathParts(QString path)
 
 QString PathHelper::findPath(QString path)
 {
+    qDebug() << "find path " << path;
     if (paths.contains(path))
     {
+        qDebug() << "find path cached return " << paths[path];
         return paths[path];
     }
 
     QFileInfo info(path);
     if (info.exists())
     {
+        qDebug() << "find path exists return " << path;
         paths[path] = path;
     } else
     {
@@ -45,6 +48,7 @@ QString PathHelper::findPath(QString path)
             }
         }
 
+        qDebug() << "find path found " << originalPath;
         paths[path] = originalPath;
     }
 
