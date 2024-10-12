@@ -288,26 +288,39 @@ QJsonObject Server::stat_to_json(const QFileInfo& info)
     int mode = 0;
     if (info.isDir())
     {
-        qDebug() << "mode is directory";
+        qDebug() << info.path() << " is directory";
         mode = S_IFDIR;
     } else
     {
-        qDebug() << "mode is file";
+        qDebug() << info.path() << " is file";
         mode = S_IFREG;
     }
     if (info.isReadable())
     {
-        qDebug() << "mode readable";
+        qDebug() << info.path() << " readable";
         mode += 0444;
     }
     if (info.isWritable())
     {
-        qDebug() << "mode writable";
+        qDebug() << info.path() << " writable";
         mode += 0222;
     }
-    if (info.isExecutable())
+
+    bool is_executable = info.isExecutable();
+    if (!is_executable)
     {
-        qDebug() << "mode executable";
+        for (const QString& ext : {".COM", ".EXE", ".BAT", ".CMD", ".VBS", ".VBE" ,".JS", ".JSE", ".WSF", ".WSH", ".MSC", ".PY", ".PYW"})
+        {
+            if (info.fileName().endsWith(ext, Qt::CaseInsensitive))
+            {
+                is_executable = true;
+                break;
+            }
+        }
+    }
+    if (is_executable)
+    {
+        qDebug() << info.path() << " executable";
         mode += 0111;
     }
 
