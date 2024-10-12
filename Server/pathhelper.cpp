@@ -17,8 +17,10 @@ QStringList PathHelper::pathParts(QString path)
 
 QString PathHelper::findPath(QString path)
 {
+    qDebug() << "find path " << path;
     if (paths.contains(path))
     {
+        qDebug() << "return path " << paths[path];
         return paths[path];
     }
 
@@ -26,6 +28,7 @@ QString PathHelper::findPath(QString path)
     if (info.exists())
     {
         paths[path] = path;
+        qDebug() << "return path " << paths[path];
     } else
     {
         QString absolutePath = QFileInfo(QDir::cleanPath(path)).absoluteFilePath();
@@ -46,6 +49,7 @@ QString PathHelper::findPath(QString path)
         }
 
         paths[path] = originalPath;
+        qDebug() << "return path " << paths[path];
     }
 
     return paths[path];
