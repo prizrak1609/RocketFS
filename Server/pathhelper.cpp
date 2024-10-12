@@ -77,6 +77,12 @@ QString PathHelper::getOriginalName(QDir dir, QString name, Qt::CaseSensitivity 
 {
     for(const QString& item : dir.entryList())
     {
+        if (item == "." || item == "..")
+        {
+            continue;
+        }
+
+        qDebug() << item << " compare " << name;
         if (item.compare(name, sensitive))
         {
             return item;
