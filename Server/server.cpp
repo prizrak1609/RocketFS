@@ -11,7 +11,7 @@
 
 constexpr auto kExecutableExtensions = {".APP", ".BAT", ".BIN", ".CAB", ".COM", ".CMD", ".COMMAND", ".CPL", ".CSH", ".EX_", ".EXE", ".GADGET", ".INF", ".INS", ".INX", ".ISU", ".JOB",
                                         ".JSE", ".KSH", ".LNK", ".MSC", ".MSI", ".MSP", ".MST", ".OSX", ".OUT", ".PAF", ".PIF", ".PS1", ".REG", ".RGS", ".RUN", ".SCR", ".SCT",
-                                        ".SHB", ".SHS", ".U3P", ".VB", ".VBE", ".VBS", ".VBSCRIPT", ".WORKFLOW", ".WS", ".WSF", ".WSH"};
+                                        ".SHB", ".SHS", ".U3P", ".VB", ".VBE", ".VBS", ".VBSCRIPT", ".WORKFLOW", ".WS", ".WSF", ".WSH", ".DLL"};
 constexpr int kBlockSize = 4096;
 
 Server::Server(QObject *parent) : QObject{parent}, web_socket_server(new QWebSocketServer("File transfer", QWebSocketServer::NonSecureMode, this))
@@ -344,21 +344,21 @@ QJsonObject Server::stat_to_json(const QFileInfo& info)
     int mode = 0;
     if (info.isDir())
     {
-        qDebug() << info.path() << " is directory";
+        qDebug() << info.absoluteFilePath() << " is directory";
         mode = S_IFDIR;
     } else
     {
-        qDebug() << info.path() << " is file";
+        qDebug() << info.absoluteFilePath() << " is file";
         mode = S_IFREG;
     }
     if (info.isReadable())
     {
-        qDebug() << info.path() << " readable";
+        qDebug() << info.absoluteFilePath() << " readable";
         mode += 0444;
     }
     if (info.isWritable())
     {
-        qDebug() << info.path() << " writable";
+        qDebug() << info.absoluteFilePath() << " writable";
         mode += 0222;
     }
 
