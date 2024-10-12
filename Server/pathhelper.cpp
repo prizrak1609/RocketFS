@@ -17,42 +17,34 @@ QStringList PathHelper::pathParts(QString path)
 
 QString PathHelper::findPath(QString path)
 {
-    qDebug() << "find path " << path;
     if (paths.contains(path))
     {
-        qDebug() << "find path cached return " << paths[path];
         return paths[path];
     }
 
     QFileInfo info(path);
     if (info.exists())
     {
-        qDebug() << "find path exists return " << path;
         paths[path] = path;
     } else
     {
         QString absolutePath = QFileInfo(QDir::cleanPath(path)).absoluteFilePath();
-        qDebug() << "absolute path " << absolutePath;
         QStringList parts = pathParts(absolutePath);
-        qDebug() << "splitted path " << parts;
         QString originalPath = "";
         QDir root = QDir::root();
         for (const QString& part : parts)
         {
             QString originalName = getOriginalName(root, part);
-            qDebug() << part << " original name " << originalName;
             if (!originalName.isEmpty())
             {
                 root.cd(originalName);
                 originalPath.append(QDir::separator()).append(originalName);
-                qDebug() << "original path " << originalPath;
             } else
             {
                 return "";
             }
         }
 
-        qDebug() << "find path found " << originalPath;
         paths[path] = originalPath;
     }
 
