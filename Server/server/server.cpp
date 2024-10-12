@@ -8,8 +8,6 @@
 #include <sys/stat.h>
 #include <QStorageInfo>
 
-constexpr int kWindowsDirMode = 16895;
-constexpr int kWindowsFileMode = 33206;
 constexpr int kBlockSize = 4096;
 
 Server::Server(QObject *parent) : QObject{parent}, web_socket_server(new QWebSocketServer("File transfer", QWebSocketServer::NonSecureMode, this))
@@ -288,13 +286,29 @@ QJsonObject Server::stat_to_json(const QFileInfo& info)
     QJsonObject result;
     result["st_dev"] = (qint64)file_stat.st_dev;
     result["st_ino"] = (qint64)file_stat.st_ino;
-    if(info.isDir())
+
+    int mode = 0;
+    if (info.isDir())
     {
-        result["st_mode"] = kWindowsDirMode;
+        mode = S_IFDIR + 0777;
     } else
     {
-        result["st_mode"] = kWindowsFileMode;
+        mode = S_IFREG;
     }
+    if (info.isReadable())
+    {
+        mode += 0444;
+    }
+    if (info.isWritable())
+    {
+        mode += 0222;
+    }
+    if (info.isExecutable())
+    {
+        mode += 0111;
+    }
+
+    result["st_mode"] = mode;
     result["st_nlink"] = (qint64)file_stat.st_nlink;
     result["st_size"] = (qint64)file_stat.st_size;
     result["st_blksize"] = kBlockSize;
