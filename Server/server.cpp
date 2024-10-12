@@ -160,11 +160,8 @@ QString Server::read_dir(QString path)
 
     QJsonArray result;
     QDir dir(originalPath);
-    QDirIterator iter(dir);
-    while (iter.hasNext())
+    for (const QString& item : dir.entryList())
     {
-        QString item = iter.next();
-
         if (item == ".") {
             continue;
         }
