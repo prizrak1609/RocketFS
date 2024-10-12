@@ -221,7 +221,7 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
     QFile file(path);
     if (file.exists())
     {
-        bool res = file.open(QFile::ReadWrite);
+        file.open(QFile::ReadWrite);
 
         QDataStream stream(&file);
         stream.skipRawData(off);
@@ -229,9 +229,7 @@ QString Server::read_file(QString path, int64_t size, int64_t off)
         QByteArray buf(size, '\0');
         stream.readRawData(buf.data(), size);
 
-        qDebug() << "read_file: response " << buf;
-        qDebug() << "read_file: status " << stream.status();
-        qDebug() << "read_file: " << path << " is opened " << res;
+        qDebug() << "read_file: response " << buf.size();
         qobject_cast<QWebSocket *>(sender())->sendBinaryMessage(buf);
         return "";
     }
@@ -290,21 +288,26 @@ QJsonObject Server::stat_to_json(const QFileInfo& info)
     int mode = 0;
     if (info.isDir())
     {
+        qDebug() << "mode is directory";
         mode = S_IFDIR;
     } else
     {
+        qDebug() << "mode is file";
         mode = S_IFREG;
     }
     if (info.isReadable())
     {
+        qDebug() << "mode readable";
         mode += 0444;
     }
     if (info.isWritable())
     {
+        qDebug() << "mode writable";
         mode += 0222;
     }
     if (info.isExecutable())
     {
+        qDebug() << "mode executable";
         mode += 0111;
     }
 
