@@ -32,16 +32,20 @@ QString PathHelper::findPath(QString path)
     } else
     {
         QString absolutePath = QFileInfo(QDir::cleanPath(path)).absoluteFilePath();
+        qDebug() << "absolute path " << absolutePath;
         QStringList parts = pathParts(absolutePath);
+        qDebug() << "splitted path " << parts;
         QString originalPath = "";
         QDir root = QDir::root();
         for (const QString& part : parts)
         {
             QString originalName = getOriginalName(root, part);
+            qDebug() << part << " original name " << originalName;
             if (!originalName.isEmpty())
             {
                 root.cd(originalName);
                 originalPath.append(QDir::separator()).append(originalName);
+                qDebug() << "original path " << originalPath;
             } else
             {
                 return "";
@@ -71,12 +75,11 @@ bool PathHelper::contains(QDir dir, QString name, Qt::CaseSensitivity sensitive)
 
 QString PathHelper::getOriginalName(QDir dir, QString name, Qt::CaseSensitivity sensitive)
 {
-    QDirIterator iter(dir);
-    while (iter.hasNext())
+    for(const QString& item : dir.entryList())
     {
-        if (iter.nextFileInfo().fileName().compare(name, sensitive))
+        if (item.compare(name, sensitive))
         {
-            return iter.nextFileInfo().fileName();
+            return item;
         }
     }
 
