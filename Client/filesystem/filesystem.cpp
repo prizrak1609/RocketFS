@@ -15,6 +15,10 @@
 #include "command/statfscmd.h"
 #include "connection_pool.h"
 
+#define print_function static unsigned long int number = 0; \
+qDebug() << number << __FUNCTION__ << "" << path; \
+number++;
+
 using namespace WebSocket;
 
 Filesystem::ptr Filesystem::instance = {};
@@ -25,15 +29,15 @@ Filesystem::Filesystem(QObject *parent) : QThread{parent}
 {
     connect(this, &QThread::finished, this, &QObject::deleteLater);
 
-    std::memset(&filesystem_stat, 0, sizeof(decltype(filesystem_stat)));
+    // std::memset(&filesystem_stat, 0, sizeof(decltype(filesystem_stat)));
 }
 
 Filesystem::~Filesystem()
 {
-    for (OpenedFile& pair : opened_files.values())
-    {
-        delete pair.mutex;
-    }
+    // for (OpenedFile& pair : opened_files.values())
+    // {
+    //     delete pair.mutex;
+    // }
 
     quit();
 }
@@ -47,288 +51,124 @@ Filesystem::ptr& Filesystem::get_instance()
     return Filesystem::instance;
 }
 
-void* Filesystem::init(fuse3_conn_info *conn, fuse3_config *conf)
+void Filesystem::init(FSP_SERVICE *service, ULONG argc, PWSTR *argv)
 {
-    conn->capable |= FUSE_CAP_CASE_INSENSITIVE | FUSE_READDIR_PLUS | FUSE_CAP_ASYNC_DIO;
-    // FUSE_CAP_ASYNC_READ
+    // cache.setPath(cache_folder);
+    // cache.mkpath(cache_folder);
 
-    cache.setPath(cache_folder);
-    cache.mkpath(cache_folder);
+    // QJsonObject attributes_obj;
+    // QFile attributes_file(kFileAttributesName);
+    // if(attributes_file.exists())
+    // {
+    //     attributes_file.open(QFile::ReadOnly);
 
-    QJsonObject attributes_obj;
-    QFile attributes_file(kFileAttributesName);
-    if(attributes_file.exists())
-    {
-        attributes_file.open(QFile::ReadOnly);
+    //     QByteArray body = attributes_file.readAll();
+    //     attributes_file.close();
 
-        QByteArray body = attributes_file.readAll();
-        attributes_file.close();
+    //     attributes_obj = QJsonDocument::fromJson(body).object();
 
-        attributes_obj = QJsonDocument::fromJson(body).object();
-
-        for(const QString& key : attributes_obj.keys())
-        {
-            file_attributes.insert(key, attributes_obj.value(key).toString());
-        }
-    }
-
-    return nullptr;
+    //     for(const QString& key : attributes_obj.keys())
+    //     {
+    //         file_attributes.insert(key, attributes_obj.value(key).toString());
+    //     }
+    // }
 }
 
-void Filesystem::destroy(void *data)
+void Filesystem::GetVolumeInfo(FSP_FSCTL_VOLUME_INFO *VolumeInfo)
 {
-    QJsonObject attributes_obj;
-    for(QString key : file_attributes.keys())
-    {
-        attributes_obj[key] = file_attributes.value(key);
-    }
+    // stat_fs
+    StatFSCmd command("/", this);
 
-    QFile attributes_file(kFileAttributesName);
-    if(attributes_file.exists())
-    {
-        attributes_file.remove();
-    }
-    attributes_file.open(QFile::WriteOnly);
-    attributes_file.write(QJsonDocument(attributes_obj).toJson());
-    attributes_file.close();
-}
-
-int Filesystem::get_attr(const char *path, fuse_stat *stbuf, fuse_file_info *fi)
-{
-    if(file_attributes.contains(path))
-    {
-        QString message = file_attributes.value(path);
-        if (!message.isEmpty())
-        {
-            convert_to_stat(message, stbuf);
-            return 0;
-        }
-
-        return -ENOENT;
-    }
-
-    GetAttrCmd command(path);
-    int result = 0;
-    Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [&result, stbuf, this, path](QString message){
-            file_attributes.insert(path, message);
-
-            if(message.isEmpty())
-            {
-                result = -ENOENT;
-                return;
-            }
-
-            convert_to_stat(message, stbuf);
-        }).waitForFinished();
-    return result;
-}
-
-int Filesystem::read_dir(const char *path, void *buf, fuse_fill_dir_t filler, fuse_off_t off, fuse_file_info *fi, fuse_readdir_flags flags)
-{
-    ReadDirCmd command(path);
-    Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [buf, this, filler, &path](QString message){
-            if(message.isEmpty())
-            {
-                return;
-            }
-
-            QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
-            QJsonArray array = doc.array();
-            for(QJsonValueRef item : array)
-            {
-                QJsonObject obj = item.toObject();
-                QString file_name = obj["file_name"].toString();
-                fuse_stat* stats = new fuse_stat();
-                QString attributes = QString(QJsonDocument(obj["stats"].toObject()).toJson(QJsonDocument::Compact));
-                convert_to_stat(attributes, stats);
-
-                QString full_path = path;
-                if(!full_path.endsWith("/"))
-                {
-                    full_path += "/";
-                }
-                full_path += file_name;
-                file_attributes.insert(full_path, attributes);
-
-                if(filler(buf, file_name.toStdString().c_str(), stats, 0, FUSE_FILL_DIR_PLUS) == 1) // buffer is full
-                {
-                    emit error("read_dir: buffer is full");
-                    break;
-                }
-            }
-        }).waitForFinished();
-    return 0;
-}
-
-int Filesystem::mkdir(const char *path, fuse_mode_t mode)
-{
-    MkDirCmd command(path);
-    Connection_pool::get_instance()->send_text(command).waitForFinished();
-    return 0;
-}
-
-int Filesystem::rmdir(const char *path)
-{
-    if(file_attributes.contains(path))
-    {
-        file_attributes.remove(path);
-    }
-    RmDirCmd command(path);
-    Connection_pool::get_instance()->send_text(command).waitForFinished();
-    return 0;
-}
-
-int Filesystem::rename(const char *oldpath, const char *newpath, unsigned int flags)
-{
-    QString attr = file_attributes.value(oldpath);
-    file_attributes.remove(oldpath);
-    file_attributes.insert(newpath, attr);
-
-    if (opened_files.contains(oldpath))
-    {
-        OpenedFile file = opened_files.value(oldpath);
-        opened_files.remove(oldpath);
-        opened_files.insert(newpath, file);
-    }
-
-    RenameCmd command(oldpath, newpath);
-    Connection_pool::get_instance()->send_text(command).waitForFinished();
-    return 0;
-}
-
-int Filesystem::create_file(const char *path, fuse_mode_t mode, fuse_file_info *fi)
-{
-    CreateFileCmd command(path);
-    Connection_pool::get_instance()->send_text(command).waitForFinished();
-    return 0;
-}
-
-int Filesystem::remove_file(const char *path)
-{
-    if(file_attributes.contains(path))
-    {
-        file_attributes.remove(path);
-    }
-    if (opened_files.contains(path))
-    {
-        OpenedFile file = opened_files.value(path);
-        opened_files.remove(path);
-        delete file.mutex;
-    }
-    RmFileCmd command(path);
-    Connection_pool::get_instance()->send_text(command).waitForFinished();
-    return 0;
-}
-
-int Filesystem::open_file(const char *path, fuse_file_info *fi)
-{
-    if (opened_files.contains(path))
-    {
-        OpenedFile file = opened_files.value(path);
-        file.links++;
-        opened_files[path] = file;
-    } else
-    {
-        OpenedFile file;
-        file.links = 1;
-        opened_files.insert(path, file);
-    }
-
-    return 0;
-}
-
-int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t off, fuse_file_info *fi)
-{
-    QMutex* mutex = opened_files.value(path).mutex;
-
-    QMutexLocker<QMutex> lock(mutex);
-
-    memset(buf, 0, size);
-
-    int read_bytes = 0;
-    ReadFileCmd command(path, size, off);
-
-    Connection_pool::get_instance()->send_binary(command).then(QtFuture::Launch::Sync, [buf, size, &read_bytes](QByteArray message){
-        if(message.isEmpty())
-        {
-            qDebug() << "received empty byte array";
-            read_bytes = -ENOENT;
-            return;
-        }
-
-        read_bytes = size;
-        if (message.size() < size)
-        {
-            read_bytes = message.size();
-        }
-
-        memcpy_s(buf, size, message, read_bytes);
-        memcpy_s(buf, size, message.constData(), read_bytes);
+    Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [VolumeInfo](QString message) {
+                                                           QJsonDocument json = QJsonDocument::fromJson(message.toUtf8());
+                                                           VolumeInfo->FreeSize = json["free_size"].toInteger();
+                                                           VolumeInfo->TotalSize = json["block_size"].toInteger() * json["blocks_count"].toInteger();
     }).waitForFinished();
-    return read_bytes;
 }
 
-int Filesystem::write_file(const char *path, const char *buf, size_t size, fuse_off_t off, fuse_file_info *fi)
+void Filesystem::ReadFile(PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, PULONG PBytesTransferred)
 {
-    QMutex* mutex = opened_files.value(path).mutex;
-
-    QMutexLocker<QMutex> lock(mutex);
-
-    qDebug() << "write file " << path << " data size " << size;
-
-    WriteFileCmd command(path, QByteArray(buf), size, off);
-    Connection_pool::get_instance()->send_text(command).waitForFinished();
-    return 0;
+    // read_file
 }
 
-int Filesystem::close_file(const char *path, fuse_file_info *fi)
+void Filesystem::WriteFile(PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, BOOLEAN WriteToEndOfFile, BOOLEAN ConstrainedIo, PULONG PBytesTransferred, FSP_FSCTL_FILE_INFO *FileInfo)
 {
-    if (opened_files.contains(path))
+    // write_file
+}
+
+void Filesystem::GetFileInfo(PVOID FileContext, FSP_FSCTL_FILE_INFO *FileInfo)
+{
+    // getattr
+}
+
+static BOOLEAN AddDirInfo(PVOID FileNode, PWSTR FileName,
+                          PVOID Buffer, ULONG Length, PULONG PBytesTransferred)
+{
+    UINT8 DirInfoBuf[sizeof(FSP_FSCTL_DIR_INFO) + sizeof FileNode->FileName];
+    FSP_FSCTL_DIR_INFO *DirInfo = (FSP_FSCTL_DIR_INFO *)DirInfoBuf;
+    WCHAR Root[2] = L"\\";
+    PWSTR Remain, Suffix;
+
+    if (0 == FileName)
     {
-        OpenedFile file = opened_files.value(path);
-        file.links--;
-        if(file.links == 0)
-        {
-            opened_files.remove(path);
-        } else
-        {
-            opened_files[path] = file;
-        }
+        FspPathSuffix(FileNode->FileName, &Remain, &Suffix, Root);
+        FileName = Suffix;
+        FspPathCombine(FileNode->FileName, Suffix);
     }
 
-    return 0;
+    memset(DirInfo->Padding, 0, sizeof DirInfo->Padding);
+    DirInfo->Size = (UINT16)(sizeof(FSP_FSCTL_DIR_INFO) + wcslen(FileName) * sizeof(WCHAR));
+    DirInfo->FileInfo = FileNode->FileInfo;
+    memcpy(DirInfo->FileNameBuf, FileName, DirInfo->Size - sizeof(FSP_FSCTL_DIR_INFO));
+
+    return FspFileSystemAddDirInfo(DirInfo, Buffer, Length, PBytesTransferred);
 }
 
-int Filesystem::stat_fs(const char *path, fuse_statvfs *stbuf)
+void Filesystem::ReadDirectory(PVOID FileContext, PWSTR Pattern, PWSTR Marker, PVOID Buffer, ULONG Length, PULONG PBytesTransferred)
 {
-    if(filesystem_stat.f_bsize > 0)
-    {
-        memcpy_s(stbuf, sizeof(fuse_statvfs), &filesystem_stat, sizeof(decltype(filesystem_stat)));
-        return 0;
-    }
+    AddDirInfo(FileContext, L".", Buffer, Length, PBytesTransferred);
+    // readdir
+}
 
-    StatFSCmd command(path);
+void Filesystem::GetDirInfoByName(PVOID FileContext, PWSTR FileName, FSP_FSCTL_DIR_INFO *DirInfo)
+{
+    // getattr
+}
 
-    int result = 0;
-    Connection_pool::get_instance()->send_text(command).then(QtFuture::Launch::Sync, [&result, stbuf, this](QString message)
-    {
-        if(message.isEmpty())
-        {
-            result = -ENOENT;
-            return;
-        }
+void Filesystem::RemoveFile(PVOID FileContext, PWSTR FileName)
+{
+    // remove_file
+}
 
-        QJsonObject body = QJsonDocument::fromJson(message.toUtf8()).object();
-        filesystem_stat.f_bsize = body["block_size"].toInteger();
-        filesystem_stat.f_blocks = body["blocks_count"].toInteger();
-        filesystem_stat.f_frsize = body["free_size"].toInteger();
-        filesystem_stat.f_bfree = body["blocks_free_count"].toInteger();
-        filesystem_stat.f_bavail = body["blocks_available_count"].toInteger();
+void Filesystem::RemoveDir(PVOID FileContext, PWSTR FileName)
+{
+    // rmdir
+}
 
-        memcpy_s(stbuf, sizeof(fuse_statvfs), &filesystem_stat, sizeof(decltype(filesystem_stat)));
-    }).waitForFinished();
+void Filesystem::Open(PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAccess, PVOID *PFileContext, FSP_FSCTL_FILE_INFO *FileInfo)
+{
+}
 
-    return result;
+void Filesystem::Close(PVOID FileContext)
+{
+}
+
+void Filesystem::destroy(FSP_SERVICE *service)
+{
+    // QJsonObject attributes_obj;
+    // for(const QString& key : file_attributes.keys())
+    // {
+    //     attributes_obj[key] = file_attributes.value(key);
+    // }
+
+    // QFile attributes_file(kFileAttributesName);
+    // if(attributes_file.exists())
+    // {
+    //     attributes_file.remove();
+    // }
+    // attributes_file.open(QFile::WriteOnly);
+    // attributes_file.write(QJsonDocument(attributes_obj).toJson());
+    // attributes_file.close();
 }
 
 QString Filesystem::cache_path(const char* path)
@@ -365,7 +205,7 @@ void Filesystem::convert_to_stat(QString message, fuse_stat *stbuf)
     ctime.tv_nsec = doc["st_ctim_tv_nsec"].toInteger();
     stbuf->st_ctim = ctime;
 
-    fuse3_context* context = fuse3_get_context();
-    stbuf->st_uid = context->uid;
-    stbuf->st_gid = context->gid;
+    // fuse3_context* context = fuse3_get_context();
+    // stbuf->st_uid = context->uid;
+    // stbuf->st_gid = context->gid;
 }

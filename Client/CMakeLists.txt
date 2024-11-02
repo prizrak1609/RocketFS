@@ -26,6 +26,8 @@ set(PROJECT_SOURCES
         filesystem/filesystem.cpp
         filesystem/filesystem_operations.cpp
         filesystem/filesystemimpl.h
+
+        winfsp.h
 )
 
 qt_add_executable(Client MANUAL_FINALIZATION ${PROJECT_SOURCES})

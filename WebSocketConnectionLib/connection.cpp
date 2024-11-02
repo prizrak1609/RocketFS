@@ -66,7 +66,7 @@ void Connection::on_text_message(const QString &message)
 {
     QString debug = message;
     debug.truncate(100);
-    qDebug() << this << " text response: " << debug;
+    // qDebug() << this << " text response: " << debug;
 
     QString _message = message;
     emit response_string(_message);
@@ -76,7 +76,7 @@ void Connection::on_text_message(const QString &message)
 
 void Connection::on_binary_message(const QByteArray &message)
 {
-    qDebug() << this << " binary response: " << message.size();
+    // qDebug() << this << " binary response: " << message.size();
 
     QByteArray _message = message;
     emit response_bytes(_message);

@@ -1,77 +1,90 @@
 #pragma once
 
 #include "filesystem.h"
+#include "winfsp.h"
 
 struct FileSystemImpl
 {
-    static void* init(fuse3_conn_info *conn, fuse3_config *conf)
+    static void setFS(FSP_FILE_SYSTEM* fs)
     {
-        return Filesystem::get_instance()->init(conn, conf);
+        Filesystem::get_instance()->fileSystem = fs;
     }
 
-    static int getattr(const char *path, struct fuse_stat *stbuf, struct fuse3_file_info *fi)
+    static FSP_FILE_SYSTEM* getFS()
     {
-        return Filesystem::get_instance()->get_attr(path, stbuf, fi);
+        return Filesystem::get_instance()->fileSystem;
     }
 
-    static int readdir(const char *path, void *buf, fuse3_fill_dir_t filler, fuse_off_t off, struct fuse3_file_info *fi, enum fuse3_readdir_flags flags)
+    static void init(FSP_SERVICE *service, ULONG argc, PWSTR *argv)
     {
-        return Filesystem::get_instance()->read_dir(path, buf, filler, off, fi, flags);
+        Filesystem::get_instance()->init(service, argc, argv);
     }
 
-    static int mkdir(const char *path, fuse_mode_t mode)
+    static void destroy(FSP_SERVICE *service)
     {
-        return Filesystem::get_instance()->mkdir(path, mode);
+        Filesystem::get_instance()->destroy(service);
     }
 
-    static int rmdir(const char *path)
+    static NTSTATUS GetVolumeInfo(FSP_FILE_SYSTEM *FileSystem, FSP_FSCTL_VOLUME_INFO *VolumeInfo)
     {
-        return Filesystem::get_instance()->rmdir(path);
+        Filesystem::get_instance()->GetVolumeInfo(VolumeInfo);
+        return STATUS_SUCCESS;
     }
 
-    static int rename(const char *oldpath, const char *newpath, unsigned int flags)
+    static NTSTATUS ReadFile(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, PULONG PBytesTransferred)
     {
-        return Filesystem::get_instance()->rename(oldpath, newpath, flags);
+        Filesystem::get_instance()->ReadFile(FileContext, Buffer, Offset, Length, PBytesTransferred);
+        return STATUS_SUCCESS;
     }
 
-    static int create_file(const char *path, fuse_mode_t mode, struct fuse3_file_info *fi)
+    static NTSTATUS WriteFile(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, BOOLEAN WriteToEndOfFile, BOOLEAN ConstrainedIo, PULONG PBytesTransferred, FSP_FSCTL_FILE_INFO *FileInfo)
     {
-        return Filesystem::get_instance()->create_file(path, mode, fi);
+        Filesystem::get_instance()->WriteFile(FileContext, Buffer, Offset, Length, WriteToEndOfFile, ConstrainedIo, PBytesTransferred, FileInfo);
+        return STATUS_SUCCESS;
     }
 
-    static int remove_file(const char *path)
+    static NTSTATUS GetFileInfo(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, FSP_FSCTL_FILE_INFO *FileInfo)
     {
-        return Filesystem::get_instance()->remove_file(path);
+        Filesystem::get_instance()->GetFileInfo(FileContext, FileInfo);
+        return STATUS_SUCCESS;
     }
 
-    static int open_file(const char *path, struct fuse3_file_info *fi)
+    static NTSTATUS CanDelete(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PWSTR FileName)
     {
-        return Filesystem::get_instance()->open_file(path, fi);
+        return STATUS_SUCCESS;
     }
 
-    static int read_file(const char *path, char *buf, size_t size, fuse_off_t off, struct fuse3_file_info *fi)
+    static NTSTATUS ReadDirectory(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PWSTR Pattern, PWSTR Marker, PVOID Buffer, ULONG Length, PULONG PBytesTransferred)
     {
-        return Filesystem::get_instance()->read_file(path, buf, size, off, fi);
+        Filesystem::get_instance()->ReadDirectory(FileContext, Pattern, Marker, Buffer, Length, PBytesTransferred);
+        return STATUS_SUCCESS;
     }
 
-    static int write_file(const char *path, const char *buf, size_t size, fuse_off_t off, struct fuse3_file_info *fi)
+    static NTSTATUS GetDirInfoByName(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PWSTR FileName, FSP_FSCTL_DIR_INFO *DirInfo)
     {
-        return Filesystem::get_instance()->write_file(path, buf, size, off, fi);
+        Filesystem::get_instance()->GetDirInfoByName(FileContext, FileName, DirInfo);
+        return STATUS_SUCCESS;
     }
 
-    static int close_file(const char *path, struct fuse3_file_info *fi)
+    static NTSTATUS SetDelete(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PWSTR FileName, BOOLEAN DeleteFile)
     {
-        return Filesystem::get_instance()->close_file(path, fi);
+        if (DeleteFile) {
+            Filesystem::get_instance()->RemoveFile(FileContext, FileName);
+        } else {
+            Filesystem::get_instance()->RemoveDir(FileContext, FileName);
+        }
+        return STATUS_SUCCESS;
     }
 
-    static void destroy(void *data)
+    static NTSTATUS Open(FSP_FILE_SYSTEM *FileSystem, PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAccess, PVOID *PFileContext, FSP_FSCTL_FILE_INFO *FileInfo)
     {
-        Filesystem::get_instance()->destroy(data);
+        Filesystem::get_instance()->Open(FileName, CreateOptions, GrantedAccess, PFileContext, FileInfo);
+        return STATUS_SUCCESS;
     }
 
-    static int stat_fs(const char *path, struct fuse_statvfs *stbuf)
+    static VOID Close(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext)
     {
-        return Filesystem::get_instance()->stat_fs(path, stbuf);
+        Filesystem::get_instance()->Close(FileContext);
     }
 };
 
