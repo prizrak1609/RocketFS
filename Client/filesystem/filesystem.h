@@ -31,23 +31,35 @@ private:
     QDir cache;
     QMap<QString, QString> file_attributes;
     FSP_FILE_SYSTEM *fileSystem;
+    ULONG SecurityDescriptorSize = 0;
+    PSECURITY_DESCRIPTOR SecurityDescriptor = nullptr;
+    FSP_FSCTL_VOLUME_INFO *volumeInfo = nullptr;
 
-    struct OpenedFile
+    QMutex readDirLock;
+
+    struct OpenedItem
     {
-        // QMutex* mutex = new QMutex();
+        QMutex lock;
+        QString name;
+        QString real_name;
+        FSP_FSCTL_FILE_INFO info;
         int links = 1;
+
+        void copyInfo(FSP_FSCTL_FILE_INFO *other);
     };
 
-    QMap<QString, OpenedFile> opened_files;
+    QSet<OpenedItem*> opened_items;
 
     Filesystem(QObject *parent = nullptr);
+
+    BOOLEAN AddDirInfo(QString fileName, FSP_FSCTL_FILE_INFO fileInfo, PVOID Buffer, ULONG Length, PULONG PBytesTransferred);
 
     void init(FSP_SERVICE *service, ULONG argc, PWSTR *argv);
     void GetVolumeInfo(FSP_FSCTL_VOLUME_INFO *VolumeInfo);
 
     void ReadFile(PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, PULONG PBytesTransferred);
     void WriteFile(PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, BOOLEAN WriteToEndOfFile, BOOLEAN ConstrainedIo, PULONG PBytesTransferred, FSP_FSCTL_FILE_INFO *FileInfo);
-    void Open(PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAccess, PVOID *PFileContext, FSP_FSCTL_FILE_INFO *FileInfo);
+    NTSTATUS Open(PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAccess, PVOID *PFileContext, FSP_FSCTL_FILE_INFO *FileInfo);
     void Close(PVOID FileContext);
 
     void GetFileInfo(PVOID FileContext, FSP_FSCTL_FILE_INFO *FileInfo);
@@ -55,6 +67,7 @@ private:
     void GetDirInfoByName(PVOID FileContext, PWSTR FileName, FSP_FSCTL_DIR_INFO *DirInfo);
     void RemoveFile(PVOID FileContext, PWSTR FileName);
     void RemoveDir(PVOID FileContext, PWSTR FileName);
+    NTSTATUS GetSecurityByName(FSP_FILE_SYSTEM *FileSystem, PWSTR FileName, PUINT32 PFileAttributes, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize);
     // void* init(fuse3_conn_info *conn, fuse3_config *conf);
     // int get_attr(const char *path, struct fuse_stat *stbuf, struct fuse3_file_info *fi);
     // int read_dir(const char *path, void *buf, fuse3_fill_dir_t filler, fuse_off_t off, struct fuse3_file_info *fi, enum fuse3_readdir_flags flags);
@@ -72,7 +85,7 @@ private:
     // void destroy(void* data);
     void destroy(FSP_SERVICE* service);
     QString cache_path(const char *path);
-    void convert_to_stat(QString doc, struct fuse_stat *stbuf);
+    void convert_to_stat(QString doc, FSP_FSCTL_FILE_INFO &stbuf);
 
     // QThread interface
 protected:
