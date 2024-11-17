@@ -393,6 +393,11 @@ QJsonObject Server::stat_to_json(const QFileInfo& info)
     }
 
     result["st_mode"] = mode;
+    result["st_mode_dir"] = info.isDir();
+    result["st_mode_file"] = info.isFile();
+    result["st_mode_read"] = info.isReadable();
+    result["st_mode_write"] = info.isWritable();
+    result["st_mode_exec"] = info.isExecutable();
     result["st_nlink"] = (qint64)file_stat.st_nlink;
     result["st_size"] = (qint64)file_stat.st_size;
     result["st_blksize"] = kBlockSize;
