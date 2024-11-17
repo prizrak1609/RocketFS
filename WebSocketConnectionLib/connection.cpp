@@ -78,7 +78,7 @@ void Connection::on_binary_message(const QByteArray &message)
 {
     // qDebug() << this << " binary response: " << message.size();
 
-    QByteArray _message = qUncompress(message);
+    QByteArray _message = message;
     emit response_bytes(_message);
 
     _idle.exchange(true);

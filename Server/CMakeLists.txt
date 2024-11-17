@@ -18,6 +18,10 @@ add_executable(Server
   pathhelper.cpp
 )
 
+if (UNIX)
+    add_compile_definitions(UNIX)
+endif(UNIX)
+
 add_dependencies(Server WebSocketConnectionLib)
 
 target_link_libraries(Server PRIVATE WebSocketConnectionLib Qt6::Core)
