@@ -18,10 +18,9 @@
 #include <QMutexLocker>
 
 #include <ranges>
+#include <algorithm>
 
-#define print_function static unsigned long int number = 0; \
-number++; \
-qDebug() << number << __FUNCTION__
+#define print_function qDebug() << __FUNCTION__
 
 using namespace WebSocket;
 
@@ -40,10 +39,10 @@ Filesystem::Filesystem(QObject *parent) : QThread{parent}
 Filesystem::~Filesystem()
 {
     print_function;
-    // for (OpenedFile& pair : opened_files.values())
-    // {
-    //     delete pair.mutex;
-    // }
+
+    for (OpenedItem* item : qAsConst(opened_items)) {
+        delete item;
+    }
 
     if (volumeInfo != nullptr) {
         delete volumeInfo;
@@ -64,6 +63,7 @@ Filesystem::ptr& Filesystem::get_instance()
 void Filesystem::init(FSP_SERVICE *service, ULONG argc, PWSTR *argv)
 {
     print_function;
+
     // cache.setPath(cache_folder);
     // cache.mkpath(cache_folder);
 
@@ -98,8 +98,8 @@ void Filesystem::GetVolumeInfo(FSP_FSCTL_VOLUME_INFO *VolumeInfo)
     volumeInfo->FreeSize = 99999999999;
     volumeInfo->TotalSize = 9999999999999;
 
-    volumeInfo->VolumeLabelLength = sizeof L"AIRFS" - sizeof(WCHAR);
-    memcpy(volumeInfo->VolumeLabel, L"AIRFS", volumeInfo->VolumeLabelLength);
+    volumeInfo->VolumeLabelLength = sizeof L"RemoteFS" - sizeof(WCHAR);
+    memcpy(volumeInfo->VolumeLabel, L"RemoteFS", volumeInfo->VolumeLabelLength);
 
     // stat_fs
     StatFSCmd command("/");
@@ -115,10 +115,44 @@ void Filesystem::GetVolumeInfo(FSP_FSCTL_VOLUME_INFO *VolumeInfo)
                                                        }).waitForFinished();
 }
 
-void Filesystem::ReadFile(PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, PULONG PBytesTransferred)
+NTSTATUS Filesystem::ReadFile(PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, PULONG PBytesTransferred)
 {
-    print_function << " " << FileContext;
-    // read_file
+    print_function << FileContext << "offset:" << Offset << "length:" << Length;
+    auto item = reinterpret_cast<OpenedItem*>(FileContext);
+
+    ReadOp* operation = new ReadOp();
+    operation->Length = Length;
+    operation->Offset = Offset;
+    operation->Buffer = Buffer;
+    operation->requestID = FspFileSystemGetOperationContext()->Request->Hint;
+
+    ReadFileCmd cmd(item->server_path, Length, Offset);
+    Connection_pool::get_instance()->send_binary(cmd).then(QtFuture::Launch::Async, [operation, this](QByteArray message){
+                                                         print_function << "offset:" << operation->Offset << "need length:" << operation->Length << "received length:" << message.length();
+
+                                                         auto length = min(operation->Length, message.length());
+                                                         FSP_FSCTL_TRANSACT_RSP response;
+                                                         memset(&response, 0, sizeof response);
+                                                         response.Size = sizeof response;
+                                                         response.Kind = FspFsctlTransactReadKind;
+                                                         response.Hint = operation->requestID;
+
+                                                         if (message.isEmpty()) {
+                                                             response.IoStatus.Status = STATUS_END_OF_FILE;
+                                                         } else {
+                                                             response.IoStatus.Status = STATUS_SUCCESS;
+
+                                                             memmove(operation->Buffer, (PUINT8)message.data(), length);
+                                                         }
+
+                                                         response.IoStatus.Information = length;
+
+                                                         delete operation;
+
+                                                         FspFileSystemSendResponse(fileSystem, &response);
+    });
+
+    return STATUS_PENDING;
 }
 
 void Filesystem::WriteFile(PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, BOOLEAN WriteToEndOfFile, BOOLEAN ConstrainedIo, PULONG PBytesTransferred, FSP_FSCTL_FILE_INFO *FileInfo)
@@ -163,9 +197,9 @@ void Filesystem::ReadDirectory(PVOID FileContext, PWSTR Pattern, PWSTR Marker, P
 
     QMutexLocker lock(&(item->lock));
 
-    print_function << " " << FileContext << item->name << QThread::currentThreadId();
+    print_function << " " << FileContext << item->path << QThread::currentThreadId();
 
-    ReadDirCmd cmd(item->real_name, this);
+    ReadDirCmd cmd(item->server_path, this);
 
     Connection_pool::get_instance()->send_text(cmd)
         .then(QtFuture::Launch::Sync, [=, this](QString message) {
@@ -176,7 +210,7 @@ void Filesystem::ReadDirectory(PVOID FileContext, PWSTR Pattern, PWSTR Marker, P
                                                             QString name = json["file_name"].toString();
 
                                                             FSP_FSCTL_FILE_INFO stats;
-                                                            convert_to_stat(json["stats"].toString(), stats);
+                                                            convert_to_stat(json["stats"].toObject(), stats);
 
                                                             AddDirInfo(name, stats, Buffer, Length, PBytesTransferred);
                                                         }
@@ -226,49 +260,61 @@ static inline UINT64 MemfsGetSystemTime(VOID)
 
 NTSTATUS Filesystem::Open(PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAccess, PVOID *PFileContext, FSP_FSCTL_FILE_INFO *FileInfo)
 {
-    if (QString::fromWCharArray(FileName).contains("desktop.ini")) {
-        return STATUS_NOT_FOUND;
-    }
-    auto iterator = std::ranges::find_if(opened_items, [FileName](const OpenedItem* item) -> bool {
-        return item->name == QString::fromWCharArray(FileName);
+    QString file = QString::fromWCharArray(FileName);
+    auto iterator = std::ranges::find_if(opened_items, [&file](const OpenedItem* item) -> bool {
+        return item->path.compare(file, Qt::CaseInsensitive) == 0;
     });
 
     if (iterator != opened_items.end()) {
-        (*iterator)->links++;
+        // (*iterator)->links++;
 
         *PFileContext = *iterator;
-        // set iterator->info to FileInfo
+        *FileInfo = (*iterator)->info;
     } else {
         auto item = new OpenedItem();
-        item->name = QString::fromWCharArray(FileName);
-        item->real_name = item->name;
-        item->real_name.replace("\\", "/");
-        // set FileInfo
+        item->path = file;
+        item->server_path = item->path;
+        item->server_path.replace("\\", "/");
+
+        NTSTATUS result = STATUS_SUCCESS;
+        GetAttrCmd cmd(item->server_path);
+        Connection_pool::get_instance()->send_text(cmd).then(QtFuture::Launch::Sync, [&result, item, this](QString message) {
+                                                           if (message.isEmpty()) {
+                                                               result = STATUS_NOT_FOUND;
+                                                               return;
+                                                           }
+                                                           convert_to_stat(QJsonDocument::fromJson(message.toUtf8()).object(), item->info);
+        }).waitForFinished();
+
+        if (result == STATUS_NOT_FOUND) {
+            delete item;
+            return result;
+        }
+
+        *FileInfo = item->info;
 
         *PFileContext = item;
 
         opened_items.insert(item);
     }
 
-    FileInfo->FileAttributes = FILE_ATTRIBUTE_DIRECTORY;
-    FileInfo->AllocationSize = FileInfo->FileSize = 999;
-    FileInfo->ChangeTime = FileInfo->CreationTime = FileInfo->LastAccessTime = FileInfo->LastWriteTime = MemfsGetSystemTime();
-    FileInfo->IndexNumber = 0;
-    FileInfo->HardLinks = 0;
-    FileInfo->EaSize = 0;
-
-    print_function << " " << QString::fromWCharArray(FileName) << " " << *PFileContext;
+    print_function << " " << file << " " << *PFileContext;
     return STATUS_SUCCESS;
 }
 
 NTSTATUS Filesystem::GetSecurityByName(FSP_FILE_SYSTEM *FileSystem, PWSTR FileName, PUINT32 PFileAttributes, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize)
 {
-    if (QString::fromWCharArray(FileName).contains("desktop.ini")) {
-        return STATUS_NOT_FOUND;
+    PVOID context;
+    FSP_FSCTL_FILE_INFO info;
+    auto result = Open(FileName, 0, 0, &context, &info);
+
+    if (result == STATUS_NOT_FOUND) {
+        return result;
     }
-    *PFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
-    if (this->SecurityDescriptor == nullptr)
-    {
+
+    *PFileAttributes = info.FileAttributes;
+
+    if (this->SecurityDescriptor == nullptr) {
         LPCTSTR              SACL = TEXT("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)");
             /*TEXT("D:")                   // Discretionary ACL
             TEXT("(A;OICI;GA;;;BG)")     // Allow access to
@@ -285,19 +331,18 @@ NTSTATUS Filesystem::GetSecurityByName(FSP_FILE_SYSTEM *FileSystem, PWSTR FileNa
         qDebug() << __FUNCTION__ << " error " << FspNtStatusFromWin32(GetLastError());
     }
 
-    if (PSecurityDescriptorSize)
-    {
-        if (SecurityDescriptorSize > *PSecurityDescriptorSize)
-        {
+    if (PSecurityDescriptorSize != nullptr) {
+        if (SecurityDescriptorSize > *PSecurityDescriptorSize) {
             *PSecurityDescriptorSize = SecurityDescriptorSize;
-            qDebug() << __FUNCTION__ << " overflow";
+            qDebug() << __FUNCTION__ << " buffer overflow";
             return STATUS_BUFFER_OVERFLOW;
         }
 
         *PSecurityDescriptorSize = SecurityDescriptorSize;
 
-        if (SecurityDescriptor)
+        if (SecurityDescriptor) {
             memcpy(SecurityDescriptor, this->SecurityDescriptor, SecurityDescriptorSize);
+        }
     }
 
     print_function << QString::fromWCharArray(FileName) << " " << SecurityDescriptor;
@@ -305,20 +350,56 @@ NTSTATUS Filesystem::GetSecurityByName(FSP_FILE_SYSTEM *FileSystem, PWSTR FileNa
     return STATUS_SUCCESS;
 }
 
+NTSTATUS Filesystem::GetSecurity(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize)
+{
+    if (this->SecurityDescriptor == nullptr) {
+        LPCTSTR              SACL = TEXT("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)");
+        /*TEXT("D:")                   // Discretionary ACL
+            TEXT("(A;OICI;GA;;;BG)")     // Allow access to
+            // built-in guests
+            TEXT("(A;OICI;GA;;;AN)")     // Allow access to
+            // anonymous logon
+            TEXT("(A;OICI;GA;;;AU)")     // Allow
+            // read/write/execute
+            // to authenticated
+            // users
+            TEXT("(A;OICI;GA;;;BA)");*/    // Allow full control
+        // to administrators
+        ConvertStringSecurityDescriptorToSecurityDescriptor(SACL, SDDL_REVISION, &(this->SecurityDescriptor), &(this->SecurityDescriptorSize));
+        qDebug() << __FUNCTION__ << " error " << FspNtStatusFromWin32(GetLastError());
+    }
+
+    if (PSecurityDescriptorSize != nullptr) {
+        if (SecurityDescriptorSize > *PSecurityDescriptorSize) {
+            *PSecurityDescriptorSize = SecurityDescriptorSize;
+            qDebug() << __FUNCTION__ << " buffer overflow";
+            return STATUS_BUFFER_OVERFLOW;
+        }
+
+        *PSecurityDescriptorSize = SecurityDescriptorSize;
+
+        if (SecurityDescriptor) {
+            memcpy(SecurityDescriptor, this->SecurityDescriptor, SecurityDescriptorSize);
+        }
+    }
+
+    return STATUS_SUCCESS;
+}
+
 void Filesystem::Close(PVOID FileContext)
 {
     print_function << " " << FileContext;
-    auto item = reinterpret_cast<OpenedItem*>(FileContext);
+    // auto item = reinterpret_cast<OpenedItem*>(FileContext);
 
-    item->links--;
+    // item->links--;
 
-    if (item->links <= 0) {
-        opened_items.remove(reinterpret_cast<OpenedItem*>(FileContext));
+    // if (item->links <= 0) {
+    //     opened_items.remove(item);
 
-        delete reinterpret_cast<OpenedItem*>(FileContext);
+    //     delete item;
 
-        qDebug() << __FUNCTION__ << " unregister";
-    }
+    //     qDebug() << __FUNCTION__ << " unregister";
+    // }
 }
 
 void Filesystem::destroy(FSP_SERVICE *service)
@@ -347,11 +428,29 @@ QString Filesystem::cache_path(const char* path)
     return file_path;
 }
 
-void Filesystem::convert_to_stat(QString message, FSP_FSCTL_FILE_INFO &stbuf)
+void Filesystem::convert_to_stat(QJsonObject doc, FSP_FSCTL_FILE_INFO &stbuf)
 {
-    QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
     stbuf.AllocationSize = doc["st_size"].toInteger();
-    stbuf.FileAttributes = doc["st_mode"].toInteger();
+
+    UINT32 attributes = 0;
+    if (doc["st_mode_dir"].toBool()) {
+        attributes = FILE_ATTRIBUTE_DIRECTORY;
+    } else if (doc["st_mode_file"].toBool()) {
+        attributes = FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_ARCHIVE | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
+
+        // if ((doc["st_mode_read"].toBool())) {
+        //     attributes |= FILE_GENERIC_READ;
+        // }
+        // if ((doc["st_mode_write"].toBool())) {
+        //     attributes |= FILE_GENERIC_WRITE;
+        // }
+        // if ((doc["st_mode_exec"].toBool())) {
+        //     attributes |= FILE_GENERIC_EXECUTE;
+        // }
+    }
+
+    stbuf.FileAttributes = attributes;
+
     stbuf.FileSize = stbuf.AllocationSize;
     stbuf.CreationTime = doc["st_ctim_tv_sec"].toInteger();
     stbuf.LastAccessTime = doc["st_atime_tv_sec"].toInteger();

@@ -96,7 +96,7 @@ static NTSTATUS Start(FSP_SERVICE *service, ULONG argc, PWSTR *argv) {
     VolumeParams.CaseSensitiveSearch = 1;
     VolumeParams.CasePreservedNames = 1;
     VolumeParams.UnicodeOnDisk = 1;
-    VolumeParams.PersistentAcls = 1;
+    VolumeParams.PersistentAcls = 0;
     VolumeParams.ReparsePoints = 0;
     VolumeParams.ReparsePointsAccessCheck = 0;
     VolumeParams.NamedStreams = 0;
@@ -105,15 +105,15 @@ static NTSTATUS Start(FSP_SERVICE *service, ULONG argc, PWSTR *argv) {
     VolumeParams.PassQueryDirectoryFileName = 1;
     VolumeParams.FlushAndPurgeOnCleanup = 1;
     VolumeParams.DeviceControl = 1;
-    // VolumeParams.ExtendedAttributes = 0;
-    // VolumeParams.WslFeatures = 0;
-    // VolumeParams.AllowOpenInKernelMode = 1;
+    VolumeParams.ExtendedAttributes = 0;
+    VolumeParams.WslFeatures = 0;
+    VolumeParams.AllowOpenInKernelMode = 0;
     // VolumeParams.RejectIrpPriorToTransact0 = 0;
-    // VolumeParams.SupportsPosixUnlinkRename = 1;
+    VolumeParams.SupportsPosixUnlinkRename = 0;
     // VolumeParams.UmFileContextIsFullContext = 0;
     // VolumeParams.UmFileContextIsUserContext2 = 0;
-    // VolumeParams.UmNoReparsePointsDirCheck = 1;
-    memcpy(VolumeParams.FileSystemName, L"AIRFS", sizeof(L"AIRFS") - sizeof(WCHAR));
+    VolumeParams.UmNoReparsePointsDirCheck = 1;
+    memcpy(VolumeParams.FileSystemName, L"RemoteFS", sizeof(L"RemoteFS") - sizeof(WCHAR));
     // wcscpy_s(VolumeParams.FileSystemName, 8, L"RemoteFS");
 \
     FSP_FILE_SYSTEM *fileSystem = nullptr;

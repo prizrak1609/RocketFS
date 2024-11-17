@@ -37,8 +37,7 @@ struct FileSystemImpl
 
     static NTSTATUS ReadFile(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, PULONG PBytesTransferred)
     {
-        Filesystem::get_instance()->ReadFile(FileContext, Buffer, Offset, Length, PBytesTransferred);
-        return STATUS_SUCCESS;
+        return Filesystem::get_instance()->ReadFile(FileContext, Buffer, Offset, Length, PBytesTransferred);
     }
 
     static NTSTATUS WriteFile(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG Length, BOOLEAN WriteToEndOfFile, BOOLEAN ConstrainedIo, PULONG PBytesTransferred, FSP_FSCTL_FILE_INFO *FileInfo)
@@ -145,8 +144,7 @@ struct FileSystemImpl
 
     static NTSTATUS GetSecurity(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize)
     {
-        print_function;
-        return STATUS_SUCCESS;
+        return Filesystem::get_instance()->GetSecurity(FileSystem, FileContext, SecurityDescriptor, PSecurityDescriptorSize);;
     }
 
     static NTSTATUS SetSecurity(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, SECURITY_INFORMATION SecurityInformation, PSECURITY_DESCRIPTOR ModificationDescriptor)
