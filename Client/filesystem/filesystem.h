@@ -32,8 +32,10 @@ private:
     QDir cache;
     QMap<QString, QString> file_attributes;
     FSP_FILE_SYSTEM *fileSystem;
-    ULONG SecurityDescriptorSize = 0;
-    PSECURITY_DESCRIPTOR SecurityDescriptor = nullptr;
+    ULONG dirSecurityDescriptorSize = 0;
+    PSECURITY_DESCRIPTOR dirSecurityDescriptor = nullptr;
+    ULONG fileSecurityDescriptorSize = 0;
+    PSECURITY_DESCRIPTOR fileSecurityDescriptor = nullptr;
     FSP_FSCTL_VOLUME_INFO *volumeInfo = nullptr;
 
     QMutex readDirLock;
@@ -46,6 +48,7 @@ private:
         QString path;
         QString server_path;
         FSP_FSCTL_FILE_INFO info;
+        bool isFile;
         int links = 1;
 
         void copyInfo(FSP_FSCTL_FILE_INFO *other);
@@ -84,6 +87,9 @@ private:
     void RemoveDir(PVOID FileContext, PWSTR FileName);
     NTSTATUS GetSecurityByName(FSP_FILE_SYSTEM *FileSystem, PWSTR FileName, PUINT32 PFileAttributes, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize);
     NTSTATUS GetSecurity(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize);
+
+    NTSTATUS getSecurityForFile(PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize);
+    NTSTATUS getSecurityForDir(PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize);
     // void* init(fuse3_conn_info *conn, fuse3_config *conf);
     // int get_attr(const char *path, struct fuse_stat *stbuf, struct fuse3_file_info *fi);
     // int read_dir(const char *path, void *buf, fuse3_fill_dir_t filler, fuse_off_t off, struct fuse3_file_info *fi, enum fuse3_readdir_flags flags);
@@ -101,7 +107,7 @@ private:
     // void destroy(void* data);
     void destroy(FSP_SERVICE* service);
     QString cache_path(const char *path);
-    void convert_to_stat(QJsonObject doc, FSP_FSCTL_FILE_INFO &stbuf);
+    void convert_to_stat(QJsonObject doc, OpenedItem* item);
 
     // QThread interface
 protected:

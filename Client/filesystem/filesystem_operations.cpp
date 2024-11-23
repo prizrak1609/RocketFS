@@ -96,7 +96,7 @@ static NTSTATUS Start(FSP_SERVICE *service, ULONG argc, PWSTR *argv) {
     VolumeParams.CaseSensitiveSearch = 1;
     VolumeParams.CasePreservedNames = 1;
     VolumeParams.UnicodeOnDisk = 1;
-    VolumeParams.PersistentAcls = 0;
+    VolumeParams.PersistentAcls = 1;
     VolumeParams.ReparsePoints = 0;
     VolumeParams.ReparsePointsAccessCheck = 0;
     VolumeParams.NamedStreams = 0;
@@ -107,7 +107,7 @@ static NTSTATUS Start(FSP_SERVICE *service, ULONG argc, PWSTR *argv) {
     VolumeParams.DeviceControl = 1;
     VolumeParams.ExtendedAttributes = 0;
     VolumeParams.WslFeatures = 0;
-    VolumeParams.AllowOpenInKernelMode = 0;
+    VolumeParams.AllowOpenInKernelMode = 1;
     // VolumeParams.RejectIrpPriorToTransact0 = 0;
     VolumeParams.SupportsPosixUnlinkRename = 0;
     // VolumeParams.UmFileContextIsFullContext = 0;

@@ -17,6 +17,7 @@
 #include "sddl.h"
 #include <QMutexLocker>
 
+#include <aclapi.h>
 #include <ranges>
 #include <algorithm>
 
@@ -164,13 +165,18 @@ void Filesystem::WriteFile(PVOID FileContext, PVOID Buffer, UINT64 Offset, ULONG
 void Filesystem::GetFileInfo(PVOID FileContext, FSP_FSCTL_FILE_INFO *FileInfo)
 {
     print_function << " " << FileContext;
-    // getattr
+
+    OpenedItem* item = reinterpret_cast<OpenedItem*>(FileContext);
+    GetAttrCmd cmd(item->server_path);
+    Connection_pool::get_instance()->send_text(cmd).then(QtFuture::Launch::Sync, [item, FileInfo, this](QString message){
+                                                       convert_to_stat(QJsonDocument::fromJson(message.toUtf8()).object(), item);
+
+                                                       *FileInfo = item->info;
+    }).waitForFinished();
 }
 
 BOOLEAN Filesystem::AddDirInfo(QString fileName, FSP_FSCTL_FILE_INFO fileInfo, PVOID Buffer, ULONG Length, PULONG PBytesTransferred)
 {
-    print_function << " " << fileName;
-
     UINT8* DirInfoBuf = new UINT8[sizeof(FSP_FSCTL_DIR_INFO) + fileName.size() * sizeof(WCHAR)];
     FSP_FSCTL_DIR_INFO *DirInfo = (FSP_FSCTL_DIR_INFO *)DirInfoBuf;
 
@@ -195,7 +201,7 @@ void Filesystem::ReadDirectory(PVOID FileContext, PWSTR Pattern, PWSTR Marker, P
 {
     auto item = reinterpret_cast<OpenedItem*>(FileContext);
 
-    QMutexLocker lock(&(item->lock));
+    // QMutexLocker lock(&(item->lock));
 
     print_function << " " << FileContext << item->path << QThread::currentThreadId();
 
@@ -209,10 +215,12 @@ void Filesystem::ReadDirectory(PVOID FileContext, PWSTR Pattern, PWSTR Marker, P
                                                             QJsonObject json = item.toObject();
                                                             QString name = json["file_name"].toString();
 
-                                                            FSP_FSCTL_FILE_INFO stats;
-                                                            convert_to_stat(json["stats"].toObject(), stats);
+                                                            OpenedItem oitem;
+                                                            convert_to_stat(json["stats"].toObject(), &oitem);
 
-                                                            AddDirInfo(name, stats, Buffer, Length, PBytesTransferred);
+                                                            print_function << " " << name << " stats: " << json["stats"].toObject();
+
+                                                            AddDirInfo(name, oitem.info, Buffer, Length, PBytesTransferred);
                                                         }
 
                                                         FspFileSystemAddDirInfo(nullptr, Buffer, Length, PBytesTransferred);
@@ -222,7 +230,17 @@ void Filesystem::ReadDirectory(PVOID FileContext, PWSTR Pattern, PWSTR Marker, P
 void Filesystem::GetDirInfoByName(PVOID FileContext, PWSTR FileName, FSP_FSCTL_DIR_INFO *DirInfo)
 {
     print_function << " " << FileContext << " " << QString::fromWCharArray(FileName);
-    // getattr
+    OpenedItem* item = reinterpret_cast<OpenedItem*>(FileContext);
+    GetAttrCmd cmd(item->server_path);
+    Connection_pool::get_instance()->send_text(cmd).then(QtFuture::Launch::Sync, [item, DirInfo, this](QString message){
+                                                       convert_to_stat(QJsonDocument::fromJson(message.toUtf8()).object(), item);
+
+                                                       FSP_FSCTL_DIR_INFO info;
+                                                       info.FileInfo = item->info;
+                                                       info.Size = item->info.FileSize;
+
+                                                       *DirInfo = info;
+                                                   }).waitForFinished();
 }
 
 void Filesystem::RemoveFile(PVOID FileContext, PWSTR FileName)
@@ -283,7 +301,7 @@ NTSTATUS Filesystem::Open(PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAc
                                                                result = STATUS_NOT_FOUND;
                                                                return;
                                                            }
-                                                           convert_to_stat(QJsonDocument::fromJson(message.toUtf8()).object(), item->info);
+                                                           convert_to_stat(QJsonDocument::fromJson(message.toUtf8()).object(), item);
         }).waitForFinished();
 
         if (result == STATUS_NOT_FOUND) {
@@ -302,58 +320,12 @@ NTSTATUS Filesystem::Open(PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAc
     return STATUS_SUCCESS;
 }
 
-NTSTATUS Filesystem::GetSecurityByName(FSP_FILE_SYSTEM *FileSystem, PWSTR FileName, PUINT32 PFileAttributes, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize)
-{
-    PVOID context;
-    FSP_FSCTL_FILE_INFO info;
-    auto result = Open(FileName, 0, 0, &context, &info);
+NTSTATUS Filesystem::getSecurityForFile(PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize) {
+    if (fileSecurityDescriptor == nullptr) {
+        GetNamedSecurityInfo(TEXT("F:\\Rayman Legends\\"), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &fileSecurityDescriptor);
 
-    if (result == STATUS_NOT_FOUND) {
-        return result;
-    }
-
-    *PFileAttributes = info.FileAttributes;
-
-    if (this->SecurityDescriptor == nullptr) {
-        LPCTSTR              SACL = TEXT("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)");
-            /*TEXT("D:")                   // Discretionary ACL
-            TEXT("(A;OICI;GA;;;BG)")     // Allow access to
-            // built-in guests
-            TEXT("(A;OICI;GA;;;AN)")     // Allow access to
-            // anonymous logon
-            TEXT("(A;OICI;GA;;;AU)")     // Allow
-            // read/write/execute
-            // to authenticated
-            // users
-            TEXT("(A;OICI;GA;;;BA)");*/    // Allow full control
-        // to administrators
-        ConvertStringSecurityDescriptorToSecurityDescriptor(SACL, SDDL_REVISION, &(this->SecurityDescriptor), &(this->SecurityDescriptorSize));
-        qDebug() << __FUNCTION__ << " error " << FspNtStatusFromWin32(GetLastError());
-    }
-
-    if (PSecurityDescriptorSize != nullptr) {
-        if (SecurityDescriptorSize > *PSecurityDescriptorSize) {
-            *PSecurityDescriptorSize = SecurityDescriptorSize;
-            qDebug() << __FUNCTION__ << " buffer overflow";
-            return STATUS_BUFFER_OVERFLOW;
-        }
-
-        *PSecurityDescriptorSize = SecurityDescriptorSize;
-
-        if (SecurityDescriptor) {
-            memcpy(SecurityDescriptor, this->SecurityDescriptor, SecurityDescriptorSize);
-        }
-    }
-
-    print_function << QString::fromWCharArray(FileName) << " " << SecurityDescriptor;
-
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS Filesystem::GetSecurity(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize)
-{
-    if (this->SecurityDescriptor == nullptr) {
-        LPCTSTR              SACL = TEXT("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)");
+        fileSecurityDescriptorSize = GetSecurityDescriptorLength(fileSecurityDescriptor);
+        //LPCTSTR              SACL = TEXT("O:S-1-5-21-730841570-429836790-1799428936-1001G:S-1-5-21-730841570-429836790-1799428936-1001D:(A;ID;FA;;;BA)(A;OICIIOID;GA;;;BA)(A;ID;FA;;;SY)(A;OICIIOID;GA;;;SY)(A;ID;0x1301bf;;;AU)(A;OICIIOID;SDGXGWGR;;;AU)(A;ID;0x1200a9;;;BU)(A;OICIIOID;GXGR;;;BU)");//TEXT("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)");
         /*TEXT("D:")                   // Discretionary ACL
             TEXT("(A;OICI;GA;;;BG)")     // Allow access to
             // built-in guests
@@ -365,25 +337,99 @@ NTSTATUS Filesystem::GetSecurity(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext,
             // users
             TEXT("(A;OICI;GA;;;BA)");*/    // Allow full control
         // to administrators
-        ConvertStringSecurityDescriptorToSecurityDescriptor(SACL, SDDL_REVISION, &(this->SecurityDescriptor), &(this->SecurityDescriptorSize));
-        qDebug() << __FUNCTION__ << " error " << FspNtStatusFromWin32(GetLastError());
+        //ConvertStringSecurityDescriptorToSecurityDescriptor(SACL, SDDL_REVISION_1, &(this->SecurityDescriptor), &(this->SecurityDescriptorSize));
+        //qDebug() << __FUNCTION__ << " error " << FspNtStatusFromWin32(GetLastError());
     }
 
     if (PSecurityDescriptorSize != nullptr) {
-        if (SecurityDescriptorSize > *PSecurityDescriptorSize) {
-            *PSecurityDescriptorSize = SecurityDescriptorSize;
-            qDebug() << __FUNCTION__ << " buffer overflow";
+        if (fileSecurityDescriptorSize > *PSecurityDescriptorSize) {
+            *PSecurityDescriptorSize = fileSecurityDescriptorSize;
+            print_function << " buffer overflow";
             return STATUS_BUFFER_OVERFLOW;
         }
 
-        *PSecurityDescriptorSize = SecurityDescriptorSize;
+        *PSecurityDescriptorSize = fileSecurityDescriptorSize;
 
-        if (SecurityDescriptor) {
-            memcpy(SecurityDescriptor, this->SecurityDescriptor, SecurityDescriptorSize);
+        if (SecurityDescriptor != nullptr) {
+            memcpy(SecurityDescriptor, fileSecurityDescriptor, fileSecurityDescriptorSize);
         }
     }
 
     return STATUS_SUCCESS;
+}
+
+NTSTATUS Filesystem::getSecurityForDir(PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize) {
+    if (dirSecurityDescriptor == nullptr) {
+        GetNamedSecurityInfo(TEXT("F:\\Rayman Legends\\"), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &dirSecurityDescriptor);
+
+        dirSecurityDescriptorSize = GetSecurityDescriptorLength(dirSecurityDescriptor);
+        //LPCTSTR              SACL = TEXT("O:S-1-5-21-730841570-429836790-1799428936-1001G:S-1-5-21-730841570-429836790-1799428936-1001D:(A;ID;FA;;;BA)(A;OICIIOID;GA;;;BA)(A;ID;FA;;;SY)(A;OICIIOID;GA;;;SY)(A;ID;0x1301bf;;;AU)(A;OICIIOID;SDGXGWGR;;;AU)(A;ID;0x1200a9;;;BU)(A;OICIIOID;GXGR;;;BU)");//TEXT("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)");
+        /*TEXT("D:")                   // Discretionary ACL
+            TEXT("(A;OICI;GA;;;BG)")     // Allow access to
+            // built-in guests
+            TEXT("(A;OICI;GA;;;AN)")     // Allow access to
+            // anonymous logon
+            TEXT("(A;OICI;GA;;;AU)")     // Allow
+            // read/write/execute
+            // to authenticated
+            // users
+            TEXT("(A;OICI;GA;;;BA)");*/    // Allow full control
+        // to administrators
+        //ConvertStringSecurityDescriptorToSecurityDescriptor(SACL, SDDL_REVISION_1, &(this->SecurityDescriptor), &(this->SecurityDescriptorSize));
+        //qDebug() << __FUNCTION__ << " error " << FspNtStatusFromWin32(GetLastError());
+    }
+
+    if (PSecurityDescriptorSize != nullptr) {
+        if (dirSecurityDescriptorSize > *PSecurityDescriptorSize) {
+            *PSecurityDescriptorSize = dirSecurityDescriptorSize;
+            print_function << " buffer overflow";
+            return STATUS_BUFFER_OVERFLOW;
+        }
+
+        *PSecurityDescriptorSize = dirSecurityDescriptorSize;
+
+        if (SecurityDescriptor != nullptr) {
+            memcpy(SecurityDescriptor, dirSecurityDescriptor, dirSecurityDescriptorSize);
+        }
+    }
+
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS Filesystem::GetSecurityByName(FSP_FILE_SYSTEM *FileSystem, PWSTR FileName, PUINT32 PFileAttributes, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize)
+{
+    PVOID context;
+    FSP_FSCTL_FILE_INFO info;
+    auto result = Open(FileName, 0, 0, &context, &info);
+
+    if (result == STATUS_NOT_FOUND) {
+        return result;
+    }
+
+    print_function << QString::fromWCharArray(FileName) << " " << SecurityDescriptor;
+
+    OpenedItem* item = reinterpret_cast<OpenedItem*>(context);
+
+    *PFileAttributes = info.FileAttributes;
+
+    if (item->isFile) {
+        return getSecurityForFile(SecurityDescriptor, PSecurityDescriptorSize);
+    } else {
+        return getSecurityForDir(SecurityDescriptor, PSecurityDescriptorSize);
+    }
+}
+
+NTSTATUS Filesystem::GetSecurity(FSP_FILE_SYSTEM *FileSystem, PVOID FileContext, PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize)
+{
+    print_function << FileContext << " " << SecurityDescriptor;
+
+    OpenedItem* item = reinterpret_cast<OpenedItem*>(FileContext);
+
+    if (item->isFile) {
+        return getSecurityForFile(SecurityDescriptor, PSecurityDescriptorSize);
+    } else {
+        return getSecurityForDir(SecurityDescriptor, PSecurityDescriptorSize);
+    }
 }
 
 void Filesystem::Close(PVOID FileContext)
@@ -428,15 +474,19 @@ QString Filesystem::cache_path(const char* path)
     return file_path;
 }
 
-void Filesystem::convert_to_stat(QJsonObject doc, FSP_FSCTL_FILE_INFO &stbuf)
+void Filesystem::convert_to_stat(QJsonObject doc, OpenedItem* item)
 {
-    stbuf.AllocationSize = doc["st_size"].toInteger();
+    FSP_FSCTL_FILE_INFO &stbuf = item->info;
+    stbuf.AllocationSize = 0;
 
     UINT32 attributes = 0;
     if (doc["st_mode_dir"].toBool()) {
+        item->isFile = false;
         attributes = FILE_ATTRIBUTE_DIRECTORY;
     } else if (doc["st_mode_file"].toBool()) {
-        attributes = FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_ARCHIVE | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED;
+        item->isFile = true;
+        attributes = FILE_ATTRIBUTE_OFFLINE;
+        //FILE_ATTRIBUTE_ARCHIVE | FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED | FILE_ATTRIBUTE_NORMAL
 
         // if ((doc["st_mode_read"].toBool())) {
         //     attributes |= FILE_GENERIC_READ;
@@ -451,7 +501,7 @@ void Filesystem::convert_to_stat(QJsonObject doc, FSP_FSCTL_FILE_INFO &stbuf)
 
     stbuf.FileAttributes = attributes;
 
-    stbuf.FileSize = stbuf.AllocationSize;
+    stbuf.FileSize = doc["st_size"].toInteger();
     stbuf.CreationTime = doc["st_ctim_tv_sec"].toInteger();
     stbuf.LastAccessTime = doc["st_atime_tv_sec"].toInteger();
     stbuf.LastWriteTime = doc["st_mtim_tv_sec"].toInteger();
