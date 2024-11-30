@@ -104,15 +104,15 @@ static NTSTATUS Start(FSP_SERVICE *service, ULONG argc, PWSTR *argv) {
     VolumeParams.PostDispositionWhenNecessaryOnly = 1;
     VolumeParams.PassQueryDirectoryFileName = 1;
     VolumeParams.FlushAndPurgeOnCleanup = 1;
-    VolumeParams.DeviceControl = 1;
+    VolumeParams.DeviceControl = 0;
     VolumeParams.ExtendedAttributes = 0;
     VolumeParams.WslFeatures = 0;
     VolumeParams.AllowOpenInKernelMode = 1;
-    // VolumeParams.RejectIrpPriorToTransact0 = 0;
-    VolumeParams.SupportsPosixUnlinkRename = 0;
+    VolumeParams.RejectIrpPriorToTransact0 = 1;
+    VolumeParams.SupportsPosixUnlinkRename = 1;
     // VolumeParams.UmFileContextIsFullContext = 0;
     // VolumeParams.UmFileContextIsUserContext2 = 0;
-    VolumeParams.UmNoReparsePointsDirCheck = 1;
+    // VolumeParams.UmNoReparsePointsDirCheck = 0;
     memcpy(VolumeParams.FileSystemName, L"RemoteFS", sizeof(L"RemoteFS") - sizeof(WCHAR));
     // wcscpy_s(VolumeParams.FileSystemName, 8, L"RemoteFS");
 \

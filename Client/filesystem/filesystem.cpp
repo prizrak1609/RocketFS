@@ -322,9 +322,11 @@ NTSTATUS Filesystem::Open(PWSTR FileName, UINT32 CreateOptions, UINT32 GrantedAc
 
 NTSTATUS Filesystem::getSecurityForFile(PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize) {
     if (fileSecurityDescriptor == nullptr) {
-        GetNamedSecurityInfo(TEXT("F:\\Rayman Legends\\"), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &fileSecurityDescriptor);
+        std::wstring descriptorText(L"O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)");
+        ConvertStringSecurityDescriptorToSecurityDescriptorW(descriptorText.data(), SDDL_REVISION_1, &fileSecurityDescriptor, &fileSecurityDescriptorSize);
+        // GetNamedSecurityInfo(TEXT("F:\\Rayman Legends\\setup.exe"), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &fileSecurityDescriptor);
 
-        fileSecurityDescriptorSize = GetSecurityDescriptorLength(fileSecurityDescriptor);
+        // fileSecurityDescriptorSize = GetSecurityDescriptorLength(fileSecurityDescriptor);
         //LPCTSTR              SACL = TEXT("O:S-1-5-21-730841570-429836790-1799428936-1001G:S-1-5-21-730841570-429836790-1799428936-1001D:(A;ID;FA;;;BA)(A;OICIIOID;GA;;;BA)(A;ID;FA;;;SY)(A;OICIIOID;GA;;;SY)(A;ID;0x1301bf;;;AU)(A;OICIIOID;SDGXGWGR;;;AU)(A;ID;0x1200a9;;;BU)(A;OICIIOID;GXGR;;;BU)");//TEXT("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)");
         /*TEXT("D:")                   // Discretionary ACL
             TEXT("(A;OICI;GA;;;BG)")     // Allow access to
@@ -360,9 +362,11 @@ NTSTATUS Filesystem::getSecurityForFile(PSECURITY_DESCRIPTOR SecurityDescriptor,
 
 NTSTATUS Filesystem::getSecurityForDir(PSECURITY_DESCRIPTOR SecurityDescriptor, SIZE_T *PSecurityDescriptorSize) {
     if (dirSecurityDescriptor == nullptr) {
-        GetNamedSecurityInfo(TEXT("F:\\Rayman Legends\\"), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &dirSecurityDescriptor);
+        std::wstring descriptorText(TEXT("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)"));
+        ConvertStringSecurityDescriptorToSecurityDescriptorW(descriptorText.data(), SDDL_REVISION_1, &fileSecurityDescriptor, &fileSecurityDescriptorSize);
+        // GetNamedSecurityInfo(TEXT("F:\\Rayman Legends\\"), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, NULL, NULL, &dirSecurityDescriptor);
 
-        dirSecurityDescriptorSize = GetSecurityDescriptorLength(dirSecurityDescriptor);
+        // dirSecurityDescriptorSize = GetSecurityDescriptorLength(dirSecurityDescriptor);
         //LPCTSTR              SACL = TEXT("O:S-1-5-21-730841570-429836790-1799428936-1001G:S-1-5-21-730841570-429836790-1799428936-1001D:(A;ID;FA;;;BA)(A;OICIIOID;GA;;;BA)(A;ID;FA;;;SY)(A;OICIIOID;GA;;;SY)(A;ID;0x1301bf;;;AU)(A;OICIIOID;SDGXGWGR;;;AU)(A;ID;0x1200a9;;;BU)(A;OICIIOID;GXGR;;;BU)");//TEXT("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)");
         /*TEXT("D:")                   // Discretionary ACL
             TEXT("(A;OICI;GA;;;BG)")     // Allow access to
@@ -485,7 +489,7 @@ void Filesystem::convert_to_stat(QJsonObject doc, OpenedItem* item)
         attributes = FILE_ATTRIBUTE_DIRECTORY;
     } else if (doc["st_mode_file"].toBool()) {
         item->isFile = true;
-        attributes = FILE_ATTRIBUTE_OFFLINE;
+        attributes = FILE_ATTRIBUTE_NORMAL;
         //FILE_ATTRIBUTE_ARCHIVE | FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED | FILE_ATTRIBUTE_NORMAL
 
         // if ((doc["st_mode_read"].toBool())) {
