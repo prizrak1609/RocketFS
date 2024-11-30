@@ -4,5 +4,7 @@ project(RemoteExecute)
 add_subdirectory(CommandsLib CommandsLib)
 add_subdirectory(WebSocketConnectionLib WebSocketConnectionLib)
 
+add_subdirectory(InterceptLib InterceptLib)
+
 add_subdirectory(Client Client)
 add_subdirectory(Server Server)

@@ -25,16 +25,16 @@ int main(int argc, char *argv[])
 
     engine.loadFromModule("qml.module", "MainWindow");
 
-    Connection_pool* pool = Connection_pool::init(nullptr, "192.168.0.14:8091");
+    // Connection_pool* pool = Connection_pool::init(nullptr, "192.168.0.14:8091");
 
     Filesystem::get_instance()->cache_folder = "F:/cache";
     Filesystem::get_instance()->mount_path = "Y:";
     Filesystem::get_instance()->start();
 
-    auto res = app.exec();
+    // auto res = app.exec();
 
-    Filesystem::get_instance()->terminate();
-    pool->deleteLater();
+    // Filesystem::get_instance()->terminate();
+    // pool->deleteLater();
 
-    return res;
+    return app.exec();
 }
