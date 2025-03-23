@@ -20,6 +20,12 @@ There are few apps that could help to share information:
     - Cons: the same as in RaiDrive
 3. ExpanDrive
     - all the same as previous options
+4. Use Samba
+    - Pros: it is free, easy to use, all popular OS supports it
+    - Cons:
+      - it uses strictly defined ports that cannot be changed
+      - it does not support caching so it loads file every time when it is requested
+      - it uses path separator of OS where it loads file which leads to incorrect functionality of some apps(Example if network drive is mapped on X drive in windows: X:\home\user\general_storage/movies/bunny.avi)
 
 ## Project goals
 
