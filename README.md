@@ -33,6 +33,11 @@ Goals:
 2. Minimise time between clicking an app and its launch
 3. Use remote files as any other file on your drive
     - you will see just new drive that is attached to your computer
+
+## Main Issues
+
+1. Apps that use multiple dlls or files are failed to start
+2. When filesystem client is launched in multithreaded mode then there is a problem with large file to load
 4. Multitasking - you can operate by different files in parallel
     - like on any other drive
 
