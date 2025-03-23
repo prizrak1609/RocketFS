@@ -25,7 +25,7 @@ There are few apps that could help to share information:
     - Cons:
       - it uses strictly defined ports that cannot be changed
       - it does not support caching so it loads file every time when it is requested
-      - it uses path separator of OS where it loads file which leads to incorrect functionality of some apps(Example if network drive is mapped on X drive in windows: X:\home\user\general_storage/movies/bunny.avi)
+      - it could use different OS separators(for example if server is linux but client is windows) which leads to incorrect functionality of some apps(Example if network drive is mapped on X drive in windows: X:\home\user\general_storage/movies/bunny.avi)
 
 ## Project goals
 
