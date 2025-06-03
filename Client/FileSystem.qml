@@ -29,5 +29,8 @@ ListView {
                 dataSource.folderPath += "/" + text
             }
         }
+
+        Button {
+        }
     }
 }

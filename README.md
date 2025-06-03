@@ -1,5 +1,10 @@
 # This project is under development
 
+## How it works
+1) Client downloads executable file
+2) Client executes withdll.exe with intercept dll and downloaded executable
+3) intercept dll contains functions to handle filesystem operations and possibly library load
+
 ## About
 
 At some point of time you have a lot of information on your PC and hard drive space is about to end.

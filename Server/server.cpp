@@ -17,7 +17,7 @@ constexpr int kBlockSize = 4096;
 
 Server::Server(QObject *parent) : QObject{parent}, web_socket_server(new QWebSocketServer("File transfer", QWebSocketServer::NonSecureMode, this))
 {
-    if(web_socket_server->listen(QHostAddress::Any, 8091))
+    if(web_socket_server->listen(QHostAddress("0.0.0.0"), 8091))
     {
         qDebug() << "listening on " << web_socket_server->serverUrl();
         QObject::connect(web_socket_server, &QWebSocketServer::newConnection, this, &Server::new_connection);

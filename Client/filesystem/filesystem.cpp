@@ -252,7 +252,7 @@ int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t o
         if(message.isEmpty())
         {
             qDebug() << "received empty byte array";
-            read_bytes = -ENOENT;
+            read_bytes = 0;
             return;
         }
 
@@ -262,7 +262,6 @@ int Filesystem::read_file(const char *path, char *buf, size_t size, fuse_off_t o
             read_bytes = message.size();
         }
 
-        memcpy_s(buf, size, message, read_bytes);
         memcpy_s(buf, size, message.constData(), read_bytes);
     }).waitForFinished();
     return read_bytes;
