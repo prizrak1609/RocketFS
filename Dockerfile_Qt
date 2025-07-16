@@ -1,4 +1,4 @@
-FROM ubuntu:23.04
+FROM ubuntu:24.04
 
 RUN mkdir -p /qt/installed
 WORKDIR /qt
@@ -10,11 +10,10 @@ RUN apt-get install -y qt6-base-dev-tools
 
 COPY qt-unified-linux-x64-4.6.1-online.run qt.run
 
-ARG email
-ARG password
-
 RUN chmod 755 qt.run
-RUN ./qt.run --root /qt/installed --accept-licenses --accept-obligations --accept-messages --confirm-command \
-    --email "$email" --pw "$password" install "qt.qt6.652.gcc_64" "qt.qt6.652.addons.qtwebsockets" "qt.tools.cmake" "qt.tools.opensslv3"
+RUN --mount=type=secret,id=email,env=QT_EMAIL \
+    --mount=type=secret,id=password,env=QT_PASSWORD \
+    ./qt.run --root /qt/installed --accept-licenses --accept-obligations --accept-messages --confirm-command \
+    --email "${QT_EMAIL}" --pw "${QT_PASSWORD}" install "qt.qt6.652.gcc_64" "qt.qt6.652.addons.qtwebsockets" "qt.tools.cmake" "qt.tools.opensslv3"
 
 RUN rm qt.run
