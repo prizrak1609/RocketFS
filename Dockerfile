@@ -1,4 +1,4 @@
-FROM azzulis/qt:6.5.2-3
+FROM azzulis/qt:8
 
 WORKDIR /qt
 RUN mkdir -p /qt/app
