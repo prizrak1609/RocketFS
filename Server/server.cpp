@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <sys/stat.h>
 #include <QStorageInfo>
+#include <QMetaEnum>
 
 constexpr auto kExecutableExtensions = {".APP", ".BAT", ".BIN", ".CAB", ".COM", ".CMD", ".COMMAND", ".CPL", ".CSH", ".EX_", ".EXE", ".GADGET", ".INF", ".INS", ".INX", ".ISU", ".JOB",
                                         ".JSE", ".KSH", ".LNK", ".MSC", ".MSI", ".MSP", ".MST", ".OSX", ".OUT", ".PAF", ".PIF", ".PS1", ".REG", ".RGS", ".RUN", ".SCR", ".SCT",
@@ -20,7 +21,17 @@ Server::Server(QObject *parent) : QObject{parent}, web_socket_server(new QWebSoc
     {
         qDebug() << "listening on " << web_socket_server->serverUrl();
         QObject::connect(web_socket_server, &QWebSocketServer::newConnection, this, &Server::new_connection);
+        QObject::connect(web_socket_server, &QWebSocketServer::acceptError, this, &Server::acceptError);
+        QObject::connect(web_socket_server, &QWebSocketServer::serverError, this, &Server::serverError);
     }
+}
+
+void Server::acceptError(QAbstractSocket::SocketError err) {
+    qDebug() << QString("accept error: ").append(QMetaEnum::fromType<QAbstractSocket::SocketError>().valueToKey(err));
+}
+
+void Server::serverError(QWebSocketProtocol::CloseCode err) {
+    qDebug() << QString("server error: ").append(QMetaEnum::fromType<QAbstractSocket::SocketError>().valueToKey(err));
 }
 
 Server::~Server()

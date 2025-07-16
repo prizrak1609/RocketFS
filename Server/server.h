@@ -20,6 +20,8 @@ public slots:
     void new_connection();
     void handle_text_message(QString message);
     void disconnected();
+    void acceptError(QAbstractSocket::SocketError socketError);
+    void serverError(QWebSocketProtocol::CloseCode closeCode);
 
 private:
     PathHelper path_helper;
