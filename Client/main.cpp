@@ -13,21 +13,21 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    // QQuickStyle::setStyle("Fusion");
+    QQuickStyle::setStyle("Fusion");
 
-    // qmlRegisterType<FileSystemDataSource>("FileSystemModel", 1, 0, "FileSystemDataSource");
-    // qmlRegisterType<Server>("Server", 1, 0, "Server");
+    qmlRegisterType<FileSystemDataSource>("FileSystemModel", 1, 0, "FileSystemDataSource");
+    qmlRegisterType<Server>("Server", 1, 0, "Server");
 
-    // QQmlApplicationEngine engine;
-    // QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, []() {
-    //     QCoreApplication::exit(-1);
-    // }, Qt::QueuedConnection);
+    QQmlApplicationEngine engine;
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, []() {
+        QCoreApplication::exit(-1);
+    }, Qt::QueuedConnection);
 
-    // engine.loadFromModule("qml.module", "MainWindow");
+    engine.loadFromModule("qml.module", "MainWindow");
 
     Connection_pool* pool = Connection_pool::init(nullptr, "192.168.0.14:8091");
 
-    Filesystem::get_instance()->cache_folder = "F:/Server";
+    Filesystem::get_instance()->cache_folder = "F:/cache";
     Filesystem::get_instance()->mount_path = "Y:";
     Filesystem::get_instance()->start();
 
