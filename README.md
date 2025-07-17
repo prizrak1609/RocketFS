@@ -51,6 +51,8 @@ If you want to see all features please look into [Features document](Features.md
 
 ## Problems with frameworks
 1) Projected Filesystem
-1.1) Failed to build Client with ProjectedFS headers(compiler prints error that different windows types not found)
+    - Failed to build Client with ProjectedFS headers(compiler prints error that different windows types not found)
 2) Dokany2
-2.1) Cannot find dokany2 headers
+    - Cannot find dokany2 headers
+3) WinFSP
+    - Problems with executing programs(probably something wrong with security descriptors)
