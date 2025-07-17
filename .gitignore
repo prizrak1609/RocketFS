@@ -79,3 +79,4 @@ build-*
 cmake-build-debug
 ClientSharedLib/build
 WebSocketConnectionLib/build
+build
