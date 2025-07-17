@@ -48,3 +48,9 @@ Goals:
 2. When filesystem client is launched in multithreaded mode then there is a problem with large file to load
 
 If you want to see all features please look into [Features document](Features.md)
+
+## Problems with frameworks
+1) Projected Filesystem
+1.1) Failed to build Client with ProjectedFS headers(compiler prints error that different windows types not found)
+2) Dokany2
+2.1) Cannot find dokany2 headers
