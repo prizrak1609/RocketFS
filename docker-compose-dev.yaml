@@ -1,8 +1,12 @@
-name: file-transfer-server
-
+version: '3.8'
 services:
   file-transfer-server:
-    image: azzulis/remote-fs:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        email: "${QT_EMAIL}"
+        password: "${QT_PASS}"
     user: 0:0
     ports:
       - 8091:8091
