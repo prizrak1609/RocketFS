@@ -1,0 +1,15 @@
+{
+  "OutputFoldersPerTargetSystem": {
+    "Local Machine": [
+      "out\\build\\debug",
+      "out\\build\\release"
+    ]
+  },
+  "ExpandedNodes": [
+    "",
+    "\\Client",
+    "\\Client\\filesystem"
+  ],
+  "SelectedNode": "\\Client\\filesystem\\filesystem_operations.cpp",
+  "PreviewInSolutionExplorer": false
+}
