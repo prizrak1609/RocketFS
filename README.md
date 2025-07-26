@@ -53,6 +53,6 @@ If you want to see all features please look into [Features document](Features.md
 1) Projected Filesystem
     - Failed to build Client with ProjectedFS headers(compiler prints error that different windows types not found)
 2) Dokany2
-    - in progress
+    - Cammot find headers
 3) WinFSP
     - Problems with executing programs(probably something wrong with security descriptors)
