@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls
 import FileSystemModel 1.0
-import ServerModule 1.0
+import Server 1.0
 
 ListView {
     visible: true

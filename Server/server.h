@@ -27,7 +27,6 @@ private:
     PathHelper path_helper;
     std::atomic_uint64_t counter = 0;
     QWebSocketServer* web_socket_server;
-    QList<QWebSocket*> clients;
     
     QString get_attr(QString path);
     QString read_dir(QString path);

@@ -38,7 +38,6 @@ Server::~Server()
 {
     qDebug() << "closing connections";
     web_socket_server->close();
-    qDeleteAll(clients);
 }
 
 void Server::new_connection()
@@ -136,10 +135,7 @@ void Server::disconnected()
     QObject::disconnect(client, &QWebSocket::textMessageReceived, this, &Server::handle_text_message);
     QObject::disconnect(client, &QWebSocket::disconnected, this, &Server::disconnected);
 
-    client->close();
-
-    clients.removeAll(client);
-    client->deleteLater();
+    // client->close();
     qDebug() << "disconnected: " << client;
 }
 

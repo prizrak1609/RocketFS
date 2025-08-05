@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <Windows.h>
-
-#define _MSC_VER 9999
-
-#include "detours.h"
+#include <detours.h>
 
 static auto real_Beep = ::Beep;
 

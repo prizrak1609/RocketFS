@@ -46,7 +46,6 @@ add_library(CommandsLib STATIC
   ${HEADERS}
 )
 
-
 target_include_directories(CommandsLib PRIVATE "${CommandsLib_INCLUDES}")
 
 target_link_libraries(CommandsLib PRIVATE Qt6::Core)

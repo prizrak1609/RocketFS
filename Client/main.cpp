@@ -16,7 +16,9 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle("Fusion");
 
     qmlRegisterType<FileSystemDataSource>("FileSystemModel", 1, 0, "FileSystemDataSource");
-    qmlRegisterType<Server>("Server", 1, 0, "Server");
+    // qmlRegisterType<Server>("Server", 1, 0, "Server");
+    Server server;
+    qmlRegisterSingletonInstance("Server", 1, 0, "Server", &server);
 
     QQmlApplicationEngine engine;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, []() {

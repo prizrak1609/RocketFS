@@ -25,16 +25,16 @@ set(PROJECT_SOURCES
         filesystem/filesystem.h
         filesystem/filesystem.cpp
         filesystem/filesystem_operations.cpp
-        filesystem/filesystemimpl.h
+
 )
 
 qt_add_executable(Client MANUAL_FINALIZATION ${PROJECT_SOURCES})
 # Define target properties for Android with Qt 6 as:
 set_property(TARGET Client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/android)
 
-add_dependencies(Client WebSocketConnectionLib CommandsLib)
+add_dependencies(Client WebSocketConnectionLib CommandsLib InterceptLib)
 
-target_link_directories(Client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} "C:/Program Files (x86)/WinFsp/lib")
+target_link_directories(Client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(Client
     PRIVATE
 
@@ -46,8 +46,6 @@ target_link_libraries(Client
 
     CommandsLib
     WebSocketConnectionLib
-
-    winfsp-x64
 )
 
 qt_add_qml_module(Client
@@ -62,7 +60,7 @@ qt_add_qml_module(Client
         "FileSystem.qml"
 )
 
-target_include_directories(Client PRIVATE "${CommandsLib_INCLUDES}" "${WebSocketConnectionLib_INCLUDES}" "C:/Program Files (x86)/WinFsp/inc")
+target_include_directories(Client PRIVATE "${CommandsLib_INCLUDES}" "${WebSocketConnectionLib_INCLUDES}")
 
 set_target_properties(Client PROPERTIES
     ${BUNDLE_ID_OPTION}
