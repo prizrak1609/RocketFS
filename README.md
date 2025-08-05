@@ -56,3 +56,7 @@ If you want to see all features please look into [Features document](Features.md
     - Cannot find headers
 3) WinFSP
     - Problems with executing programs(probably something wrong with security descriptors)
+4) Detours
+    - Open "x64 Native Tools Command Prompt for VS \<version>"
+    - run build_detours.bat
+    - in progress
