@@ -54,7 +54,7 @@ void FileSystemDataSource::setServer(Server* server) {
 }
 
 void FileSystemDataSource::fetchData() {
-    _server->readDir(_folderPath).then(QtFuture::Launch::Sync, [this](QString text) {
+    _server->readDir(_folderPath).then(QtFuture::Launch::Async, [this](QString text) {
         QJsonDocument document = QJsonDocument::fromJson(text.toUtf8());
         QJsonArray array = document.array();
         for (const QJsonValue& val : std::as_const(array)) {
