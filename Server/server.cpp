@@ -143,7 +143,8 @@ void Server::disconnected()
     QObject::disconnect(client, &QWebSocket::textMessageReceived, this, &Server::handle_text_message);
     QObject::disconnect(client, &QWebSocket::disconnected, this, &Server::disconnected);
 
-    // client->close();
+    client->close();
+    client->deleteLater();
     qDebug() << "disconnected: " << client;
 }
 
