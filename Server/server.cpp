@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <QStorageInfo>
 #include <QMetaEnum>
+#include <thread>
+#include <chrono>
 
 constexpr auto kExecutableExtensions = {".APP", ".BAT", ".BIN", ".CAB", ".COM", ".CMD", ".COMMAND", ".CPL", ".CSH", ".EX_", ".EXE", ".GADGET", ".INF", ".INS", ".INX", ".ISU", ".JOB",
                                         ".JSE", ".KSH", ".LNK", ".MSC", ".MSI", ".MSP", ".MST", ".OSX", ".OUT", ".PAF", ".PIF", ".PS1", ".REG", ".RGS", ".RUN", ".SCR", ".SCT",
@@ -50,6 +52,12 @@ void Server::new_connection()
 
 void Server::handle_text_message(QString message)
 {
+    bool delayIsSet = false;
+    int delay = qEnvironmentVariableIntValue("TEST_DELAY_MS", &delayIsSet);
+    if (delayIsSet) {
+        qDebug() << "test: delaying message for " << delay << "milliseconds";
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    }
     uint64_t messageNumber = counter.fetch_add(1);
     qDebug() << messageNumber << ": " << qobject_cast<QWebSocket *>(sender()) << "received: " << message;
     QJsonObject obj = QJsonDocument::fromJson(message.toUtf8()).object();
