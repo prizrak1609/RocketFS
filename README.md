@@ -14,7 +14,7 @@ there is a problem because you need either to clone information between devices 
 There are few apps that could help to share information:
 1. RaiDrive
     - Pros: it is free, localized, easy to use
-    - Cons: it fully downloads file locally before using it(which is bad for gaming and you need to wait till downlaoding finishes before using)
+    - Cons: it fully downloads file locally before using it(which is bad for gaming and you need to wait till downloading finishes before using)
 2. Mountain Duck
     - Pros: it supports all popular OS
     - Cons: the same as in RaiDrive
