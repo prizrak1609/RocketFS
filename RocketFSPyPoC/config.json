@@ -1,0 +1,6 @@
+{
+  "server_url": "ws://192.168.0.114:8765",
+  "mount_point": "Y:",
+  "cache_dir": "RocketFSCache",
+  "timeout": 30
+}
