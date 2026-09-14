@@ -1,0 +1,11 @@
+# TUI
+textual>=8.0.0
+
+# Frida instrumentation
+frida>=17.0.0
+frida-tools>=14.0.0
+
+# RocketFS server communication (same protocol as RocketFSPyPoC)
+websockets>=13.0.0
+diskcache>=5.0.0
+aiofiles>=23.0.0

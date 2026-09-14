@@ -1,0 +1,31 @@
+{
+  // RocketFS server connection (shared with RocketFSPyPoC/config.json)
+  // Server API: RocketFSPyPoC/API.md
+  "server_url": "ws://192.168.0.114:8765",
+  "timeout": 30,
+
+  // Mount point on Windows (for reference)
+  "mount_point": "Y:",
+
+  // Frida sandbox settings
+  "frida": {
+    "auto_attach": true,
+    "pid": null
+  },
+
+  // Hook configuration
+  "hook": {
+    "whitelist": [],
+    "blacklist": [
+      "C:\\Windows\\System32\\drivers\\",
+      "C:\\Windows\\System32\\wbem\\"
+    ]
+  },
+
+  // Local test server (optional, for development without production server)
+  "local_server": {
+    "enabled": false,
+    "root": "./test_files",
+    "port": 8765
+  }
+}
